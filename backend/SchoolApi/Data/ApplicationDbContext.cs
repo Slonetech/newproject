@@ -13,6 +13,7 @@ namespace SchoolApi.Data // ✅ Make sure this matches the folder/project struct
 
         public DbSet<Student> Students { get; set; }
         public DbSet<Teacher> Teachers { get; set; }
+        public DbSet<Parent> Parents { get; set; }
         // Optional: You do not need DbSet<ApplicationUser> unless you're doing custom queries on users
     }
 }
