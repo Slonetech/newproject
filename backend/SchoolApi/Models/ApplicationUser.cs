@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace SchoolApi.Models // ✅ Must match the namespace used in ApplicationDbContext
+namespace SchoolApi.Models
 {
     public class ApplicationUser : IdentityUser
     {
-        // Add custom properties here if needed
-        // public string FullName { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
