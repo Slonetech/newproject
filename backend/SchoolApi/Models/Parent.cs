@@ -5,6 +5,7 @@ namespace SchoolApi.Models
 {
     public class Parent
     {
+        [Key]
         public int Id { get; set; }
         public string FullName { get; set; }
         public string Email { get; set; }
