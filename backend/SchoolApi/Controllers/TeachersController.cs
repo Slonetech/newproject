@@ -8,7 +8,7 @@ namespace SchoolApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Requires authentication; remove if public
+    [Authorize]
     public class TeachersController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -18,14 +18,12 @@ namespace SchoolApi.Controllers
             _context = context;
         }
 
-        // GET: api/Teachers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Teacher>>> GetTeachers()
         {
             return await _context.Teachers.ToListAsync();
         }
 
-        // GET: api/Teachers/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Teacher>> GetTeacher(int id)
         {
@@ -39,7 +37,6 @@ namespace SchoolApi.Controllers
             return teacher;
         }
 
-        // POST: api/Teachers
         [HttpPost]
         public async Task<ActionResult<Teacher>> PostTeacher(Teacher teacher)
         {
@@ -49,7 +46,6 @@ namespace SchoolApi.Controllers
             return CreatedAtAction(nameof(GetTeacher), new { id = teacher.Id }, teacher);
         }
 
-        // PUT: api/Teachers/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutTeacher(int id, Teacher teacher)
         {
@@ -79,7 +75,6 @@ namespace SchoolApi.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Teachers/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTeacher(int id)
         {

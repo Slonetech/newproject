@@ -6,18 +6,19 @@ namespace SchoolApi.Models
     public class Parent
     {
         [Key]
-        public int Id { get; set; }
-        public string FullName { get; set; }
-        public string Email { get; set; }
-        public string PhoneNumber { get; set; }
-        public ICollection<Student> Children { get; set; }
+        public string? Id { get; set; }
 
-        public Parent()
-        {
-            FullName = string.Empty;
-            Email = string.Empty;
-            PhoneNumber = string.Empty;
-            Children = new List<Student>();
-        }
+        [Required]
+        [StringLength(100)]
+        public string? FullName { get; set; }
+
+        // Parent has many children (Students)
+        public ICollection<Student> Students { get; set; } = new List<Student>();
+
+        // Foreign key to ApplicationUser
+        public string? UserId { get; set; }
+
+        // Navigation property
+        public ApplicationUser? User { get; set; }
     }
 }

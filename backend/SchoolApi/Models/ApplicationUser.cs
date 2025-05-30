@@ -4,7 +4,9 @@ namespace SchoolApi.Models
 {
     public class ApplicationUser : IdentityUser
     {
-        public string FullName { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public Parent? Parent { get; set; }
+        public Student? Student { get; set; }
+        public Teacher? Teacher { get; set; }
+
     }
 }
