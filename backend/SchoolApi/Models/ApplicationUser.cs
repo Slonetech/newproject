@@ -4,9 +4,10 @@ namespace SchoolApi.Models
 {
     public class ApplicationUser : IdentityUser
     {
-        public Parent? Parent { get; set; }
-        public Student? Student { get; set; }
-        public Teacher? Teacher { get; set; }
+        public string? FullName { get; set; }
 
+        public virtual Student? Student { get; set; }
+        public virtual Teacher? Teacher { get; set; }
+        public virtual Parent? Parent { get; set; }
     }
 }

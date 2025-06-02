@@ -174,6 +174,9 @@ namespace SchoolApi.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<string>("FullName")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
 
@@ -228,28 +231,20 @@ namespace SchoolApi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CourseId")
+                    b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("datetime2");
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<string>("StudentId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("StudentId1")
+                    b.Property<int>("TeacherId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourseId");
+                    b.HasIndex("StudentId");
 
-                    b.HasIndex("StudentId1");
+                    b.HasIndex("TeacherId");
 
                     b.ToTable("Attendances");
                 });
@@ -262,27 +257,10 @@ namespace SchoolApi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("Credits")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("TeacherId")
+                    b.Property<string>("Title")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("TeacherId1")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("TeacherId1");
 
                     b.ToTable("Courses");
                 });
@@ -295,48 +273,43 @@ namespace SchoolApi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime>("AwardedDate")
+                    b.Property<DateTime>("DateAwarded")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("CourseId")
+                    b.Property<float>("Score")
+                        .HasColumnType("real");
+
+                    b.Property<int>("StudentId")
                         .HasColumnType("int");
 
-                    b.Property<double>("Score")
-                        .HasColumnType("float");
-
-                    b.Property<string>("StudentId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("StudentId1")
+                    b.Property<int>("TeacherId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourseId");
+                    b.HasIndex("StudentId");
 
-                    b.HasIndex("StudentId1");
+                    b.HasIndex("TeacherId");
 
                     b.ToTable("Grades");
                 });
 
             modelBuilder.Entity("SchoolApi.Models.Parent", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("UserId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId")
-                        .IsUnique()
-                        .HasFilter("[UserId] IS NOT NULL");
+                        .IsUnique();
 
                     b.ToTable("Parents");
                 });
@@ -349,15 +322,17 @@ namespace SchoolApi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<string>("AdmissionNumber")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ParentId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<string>("GradeLevel")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("int");
 
                     b.Property<string>("UserId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
@@ -365,8 +340,7 @@ namespace SchoolApi.Migrations
                     b.HasIndex("ParentId");
 
                     b.HasIndex("UserId")
-                        .IsUnique()
-                        .HasFilter("[UserId] IS NOT NULL");
+                        .IsUnique();
 
                     b.ToTable("Students");
                 });
@@ -394,19 +368,17 @@ namespace SchoolApi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<string>("Subject")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("UserId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("UserId")
-                        .IsUnique()
-                        .HasFilter("[UserId] IS NOT NULL");
+                        .IsUnique();
 
                     b.ToTable("Teachers");
                 });
@@ -464,52 +436,49 @@ namespace SchoolApi.Migrations
 
             modelBuilder.Entity("SchoolApi.Models.Attendance", b =>
                 {
-                    b.HasOne("SchoolApi.Models.Course", "Course")
-                        .WithMany()
-                        .HasForeignKey("CourseId")
+                    b.HasOne("SchoolApi.Models.Student", "Student")
+                        .WithMany("Attendances")
+                        .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("SchoolApi.Models.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId1");
-
-                    b.Navigation("Course");
+                    b.HasOne("SchoolApi.Models.Teacher", "Teacher")
+                        .WithMany("Attendances")
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Student");
-                });
-
-            modelBuilder.Entity("SchoolApi.Models.Course", b =>
-                {
-                    b.HasOne("SchoolApi.Models.Teacher", "Teacher")
-                        .WithMany("Courses")
-                        .HasForeignKey("TeacherId1");
 
                     b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("SchoolApi.Models.Grade", b =>
                 {
-                    b.HasOne("SchoolApi.Models.Course", "Course")
-                        .WithMany()
-                        .HasForeignKey("CourseId")
+                    b.HasOne("SchoolApi.Models.Student", "Student")
+                        .WithMany("Grades")
+                        .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("SchoolApi.Models.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId1");
-
-                    b.Navigation("Course");
+                    b.HasOne("SchoolApi.Models.Teacher", "Teacher")
+                        .WithMany("Grades")
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Student");
+
+                    b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("SchoolApi.Models.Parent", b =>
                 {
                     b.HasOne("SchoolApi.Models.ApplicationUser", "User")
                         .WithOne("Parent")
-                        .HasForeignKey("SchoolApi.Models.Parent", "UserId");
+                        .HasForeignKey("SchoolApi.Models.Parent", "UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -522,7 +491,9 @@ namespace SchoolApi.Migrations
 
                     b.HasOne("SchoolApi.Models.ApplicationUser", "User")
                         .WithOne("Student")
-                        .HasForeignKey("SchoolApi.Models.Student", "UserId");
+                        .HasForeignKey("SchoolApi.Models.Student", "UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Parent");
 
@@ -552,7 +523,9 @@ namespace SchoolApi.Migrations
                 {
                     b.HasOne("SchoolApi.Models.ApplicationUser", "User")
                         .WithOne("Teacher")
-                        .HasForeignKey("SchoolApi.Models.Teacher", "UserId");
+                        .HasForeignKey("SchoolApi.Models.Teacher", "UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -578,12 +551,18 @@ namespace SchoolApi.Migrations
 
             modelBuilder.Entity("SchoolApi.Models.Student", b =>
                 {
+                    b.Navigation("Attendances");
+
+                    b.Navigation("Grades");
+
                     b.Navigation("StudentCourses");
                 });
 
             modelBuilder.Entity("SchoolApi.Models.Teacher", b =>
                 {
-                    b.Navigation("Courses");
+                    b.Navigation("Attendances");
+
+                    b.Navigation("Grades");
                 });
 #pragma warning restore 612, 618
         }

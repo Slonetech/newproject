@@ -1,23 +1,19 @@
 using System.Collections.Generic;
+
 using System.ComponentModel.DataAnnotations;
 
 namespace SchoolApi.Models
 {
     public class Teacher
-{
-    [Key]
-    public int Id { get; set; }  // 👈 This is critical!
-    
-    [Required]
-    [StringLength(100)]
-    public string? FullName { get; set; }
+    {
+        public int Id { get; set; }
+        public string? Subject { get; set; }
 
-    // Courses they teach
-    public ICollection<Course> Courses { get; set; } = new List<Course>();
+        public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
+        public ICollection<Grade> Grades { get; set; } = new List<Grade>();
 
-    // FK to ApplicationUser
-    public string? UserId { get; set; }
-    public ApplicationUser? User { get; set; }
-}
-
+        [Required]
+        public string UserId { get; set; } = null!;
+        public ApplicationUser User { get; set; } = null!;
+    }
 }

@@ -1,23 +1,15 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace SchoolApi.Models
 {
     public class Grade
     {
         public int Id { get; set; }
+        public float Score { get; set; }
+        public DateTime DateAwarded { get; set; }
 
-        [Required]
-        [Range(0, 100)]
-        public double Score { get; set; }
+        public int StudentId { get; set; }
+        public Student Student { get; set; } = null!;
 
-        [Required]
-        public DateTime AwardedDate { get; set; }
-
-        // Foreign Keys
-        public int CourseId { get; set; }
-        public Course? Course { get; set; }
-
-        public string? StudentId { get; set; }
-        public Student? Student { get; set; }
+        public int TeacherId { get; set; }
+        public Teacher Teacher { get; set; } = null!;
     }
 }

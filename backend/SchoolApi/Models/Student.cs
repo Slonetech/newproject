@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SchoolApi.Models
 {
@@ -8,23 +8,20 @@ namespace SchoolApi.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
-        [StringLength(100)]
-        public string? FullName { get; set; }
+        public string? AdmissionNumber { get; set; }
+        public string? GradeLevel { get; set; }
 
-        // ... other student properties ...
-
-        // Foreign key to ApplicationUser
-        public string? UserId { get; set; }
-
-        // Navigation property
-        public ApplicationUser? User { get; set; }
-
-        // Navigation to Parent
-        public string? ParentId { get; set; }
+        public int? ParentId { get; set; }
         public Parent? Parent { get; set; }
 
-        // Many-to-many with courses
+        // Relationships
         public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
+        public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
+        public ICollection<Grade> Grades { get; set; } = new List<Grade>();
+
+        // Link to ApplicationUser
+        [Required]
+        public string UserId { get; set; } = null!;
+        public ApplicationUser User { get; set; } = null!;
     }
 }
