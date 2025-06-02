@@ -30,11 +30,8 @@ namespace SchoolApi.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto dto)
         {
-            var existingUser = await _userManager.FindByNameAsync(dto.Username);
-            if (existingUser != null)
-            {
-                return BadRequest(new { message = "User already exists!" });
-            }
+            if (await _userManager.FindByNameAsync(dto.Username) != null)
+                return BadRequest(new { message = "User already exists." });
 
             var user = new ApplicationUser
             {
@@ -44,22 +41,17 @@ namespace SchoolApi.Controllers
 
             var createResult = await _userManager.CreateAsync(user, dto.Password);
             if (!createResult.Succeeded)
-            {
                 return BadRequest(createResult.Errors);
-            }
 
             if (!await _roleManager.RoleExistsAsync(dto.Role))
             {
                 var roleResult = await _roleManager.CreateAsync(new IdentityRole(dto.Role));
                 if (!roleResult.Succeeded)
-                {
                     return StatusCode(500, new { message = "Failed to create role." });
-                }
             }
 
             await _userManager.AddToRoleAsync(user, dto.Role);
-
-            return Ok(new { message = "User registered successfully" });
+            return Ok(new { message = "User registered successfully." });
         }
 
         [HttpPost("login")]
@@ -67,34 +59,24 @@ namespace SchoolApi.Controllers
         {
             var user = await _userManager.FindByNameAsync(dto.Username);
             if (user == null || !await _userManager.CheckPasswordAsync(user, dto.Password))
-            {
-                return Unauthorized(new { message = "Invalid credentials" });
-            }
+                return Unauthorized(new { message = "Invalid credentials." });
 
             var userRoles = await _userManager.GetRolesAsync(user);
-
             var authClaims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name, user.UserName ?? string.Empty),
+                new Claim(ClaimTypes.Name, user.UserName!),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            foreach (var role in userRoles)
-            {
-                authClaims.Add(new Claim(ClaimTypes.Role, role));
-            }
+            authClaims.AddRange(userRoles.Select(role => new Claim(ClaimTypes.Role, role)));
 
             var secretKey = _configuration["Jwt:SecretKey"];
             var issuer = _configuration["Jwt:Issuer"];
             var audience = _configuration["Jwt:Audience"];
-
             if (string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
-            {
-                return StatusCode(500, new { message = "JWT configuration is missing or incomplete." });
-            }
+                return StatusCode(500, new { message = "JWT configuration is missing." });
 
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-
             var token = new JwtSecurityToken(
                 issuer: issuer,
                 audience: audience,

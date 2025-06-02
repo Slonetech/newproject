@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SchoolApi.Models
 {
     public enum AttendanceStatus
@@ -10,13 +12,17 @@ namespace SchoolApi.Models
     public class Attendance
     {
         public int Id { get; set; }
+
+        [Required]
         public AttendanceStatus Status { get; set; }
 
-        // Relationships
+        [Required]
         public int StudentId { get; set; }
         public Student Student { get; set; } = null!;
 
+        [Required]
         public int TeacherId { get; set; }
         public Teacher Teacher { get; set; } = null!;
     }
+
 }

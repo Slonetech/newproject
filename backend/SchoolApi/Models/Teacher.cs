@@ -5,15 +5,18 @@ using System.ComponentModel.DataAnnotations;
 namespace SchoolApi.Models
 {
     public class Teacher
-    {
-        public int Id { get; set; }
-        public string? Subject { get; set; }
+{
+    public int Id { get; set; }
 
-        public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
-        public ICollection<Grade> Grades { get; set; } = new List<Grade>();
+    [Required]
+    public string Subject { get; set; } = null!;
 
-        [Required]
-        public string UserId { get; set; } = null!;
-        public ApplicationUser User { get; set; } = null!;
-    }
+    public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
+    public ICollection<Grade> Grades { get; set; } = new List<Grade>();
+
+    [Required]
+    public string UserId { get; set; } = null!;
+    public ApplicationUser User { get; set; } = null!;
+}
+
 }

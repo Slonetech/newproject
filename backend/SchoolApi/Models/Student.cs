@@ -4,24 +4,26 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace SchoolApi.Models
 {
     public class Student
-    {
-        [Key]
-        public int Id { get; set; }
+{
+    [Key]
+    public int Id { get; set; }
 
-        public string? AdmissionNumber { get; set; }
-        public string? GradeLevel { get; set; }
+    [Required]
+    public string AdmissionNumber { get; set; } = null!;
 
-        public int? ParentId { get; set; }
-        public Parent? Parent { get; set; }
+    [Required]
+    public string GradeLevel { get; set; } = null!;
 
-        // Relationships
-        public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
-        public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
-        public ICollection<Grade> Grades { get; set; } = new List<Grade>();
+    public int? ParentId { get; set; }
+    public Parent? Parent { get; set; }
 
-        // Link to ApplicationUser
-        [Required]
-        public string UserId { get; set; } = null!;
-        public ApplicationUser User { get; set; } = null!;
-    }
+    public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
+    public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
+    public ICollection<Grade> Grades { get; set; } = new List<Grade>();
+
+    [Required]
+    public string UserId { get; set; } = null!;
+    public ApplicationUser User { get; set; } = null!;
+}
+
 }

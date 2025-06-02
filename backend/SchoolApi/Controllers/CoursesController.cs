@@ -9,48 +9,48 @@ namespace SchoolApi.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class StudentsController : ControllerBase
+    public class CoursesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
 
-        public StudentsController(ApplicationDbContext context)
+        public CoursesController(ApplicationDbContext context)
         {
             _context = context;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
+        public async Task<ActionResult<IEnumerable<Course>>> GetCourses()
         {
-            return Ok(await _context.Students.Include(s => s.User).ToListAsync());
+            return Ok(await _context.Courses.ToListAsync());
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Student>> GetStudent(int id)
+        public async Task<ActionResult<Course>> GetCourse(int id)
         {
-            var student = await _context.Students.Include(s => s.User).FirstOrDefaultAsync(s => s.Id == id);
-            if (student == null)
+            var course = await _context.Courses.FindAsync(id);
+            if (course == null)
                 return NotFound();
 
-            return Ok(student);
+            return Ok(course);
         }
 
         [HttpPost]
         [Authorize(Roles = "Admin,Teacher")]
-        public async Task<ActionResult<Student>> CreateStudent(Student student)
+        public async Task<ActionResult<Course>> CreateCourse(Course course)
         {
-            _context.Students.Add(student);
+            _context.Courses.Add(course);
             await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetStudent), new { id = student.Id }, student);
+            return CreatedAtAction(nameof(GetCourse), new { id = course.Id }, course);
         }
 
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,Teacher")]
-        public async Task<IActionResult> UpdateStudent(int id, Student student)
+        public async Task<IActionResult> UpdateCourse(int id, Course course)
         {
-            if (id != student.Id)
+            if (id != course.Id)
                 return BadRequest();
 
-            _context.Entry(student).State = EntityState.Modified;
+            _context.Entry(course).State = EntityState.Modified;
 
             try
             {
@@ -58,7 +58,7 @@ namespace SchoolApi.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!await _context.Students.AnyAsync(s => s.Id == id))
+                if (!CourseExists(id))
                     return NotFound();
                 else
                     throw;
@@ -69,15 +69,17 @@ namespace SchoolApi.Controllers
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteStudent(int id)
+        public async Task<IActionResult> DeleteCourse(int id)
         {
-            var student = await _context.Students.FindAsync(id);
-            if (student == null)
+            var course = await _context.Courses.FindAsync(id);
+            if (course == null)
                 return NotFound();
 
-            _context.Students.Remove(student);
+            _context.Courses.Remove(course);
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
+        private bool CourseExists(int id) => _context.Courses.Any(e => e.Id == id);
     }
 }
