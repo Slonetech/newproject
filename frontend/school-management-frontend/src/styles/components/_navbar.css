@@ -1,0 +1,62 @@
+/* src/styles/components/_navbar.css */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #343a40; /* Dark background */
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand .navbar-logo {
+  font-weight: bold;
+  font-size: 1.5rem;
+  text-decoration: none;
+  color: white;
+  transition: color 0.2s ease-in-out;
+}
+
+.navbar-brand .navbar-logo:hover {
+  color: #007bff; /* Primary blue on hover */
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem; /* Space between nav items */
+}
+
+.nav-item {
+  text-decoration: none;
+  color: white;
+  font-weight: 500;
+  transition: color 0.2s ease-in-out, transform 0.1s ease-in-out;
+}
+
+.nav-item:hover {
+  color: #007bff;
+  transform: translateY(-2px);
+}
+
+.nav-username {
+  color: #adb5bd; /* Lighter grey for username */
+  font-size: 0.95rem;
+  margin-left: 1rem;
+}
+
+.nav-logout-btn {
+  padding: 0.6rem 1.2rem;
+  background-color: #dc3545; /* Red for logout */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.nav-logout-btn:hover {
+  background-color: #c82333;
+}

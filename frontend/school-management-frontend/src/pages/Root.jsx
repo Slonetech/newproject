@@ -1,13 +1,26 @@
 // src/pages/Root.jsx
-import React from "react";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // To check if user is logged in
 
-const Root = () => {
+function Root() {
+  const { user } = useAuth();
   return (
-    <div>
+    <div className="text-center" style={{ marginTop: '50px' }}>
       <h1>Welcome to the School Management System</h1>
-      <p>Please login or navigate using the navbar.</p>
+      <p>Your one-stop solution for managing school activities.</p>
+      {!user ? (
+        <div style={{ marginTop: '30px' }}>
+          <Link to="/login" className="btn-primary" style={{ marginRight: '10px' }}>Login</Link>
+          <Link to="/register" className="btn-primary">Register</Link>
+        </div>
+      ) : (
+        <div style={{ marginTop: '30px' }}>
+          <Link to="/dashboard" className="btn-primary">Go to Dashboard</Link>
+        </div>
+      )}
     </div>
   );
-};
+}
 
 export default Root;

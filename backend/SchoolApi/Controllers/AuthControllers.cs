@@ -6,6 +6,7 @@ using SchoolApi.Models.DTOs;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization; // Add this using directive
 
 namespace SchoolApi.Controllers
 {
@@ -28,6 +29,7 @@ namespace SchoolApi.Controllers
         }
 
         [HttpPost("register")]
+        [AllowAnonymous] // <--- ADD THIS LINE
         public async Task<IActionResult> Register(RegisterDto dto)
         {
             if (await _userManager.FindByNameAsync(dto.Username) != null)
@@ -36,13 +38,16 @@ namespace SchoolApi.Controllers
             var user = new ApplicationUser
             {
                 UserName = dto.Username,
-                Email = dto.Email
+                Email = dto.Email,
+                FirstName = dto.FirstName,
+                LastName = dto.LastName
             };
 
             var createResult = await _userManager.CreateAsync(user, dto.Password);
             if (!createResult.Succeeded)
-                return BadRequest(createResult.Errors);
+                return BadRequest(new { errors = createResult.Errors });
 
+            // Create role if it doesn't exist
             if (!await _roleManager.RoleExistsAsync(dto.Role))
             {
                 var roleResult = await _roleManager.CreateAsync(new IdentityRole(dto.Role));
@@ -55,6 +60,7 @@ namespace SchoolApi.Controllers
         }
 
         [HttpPost("login")]
+        [AllowAnonymous] // <--- ADD THIS LINE
         public async Task<IActionResult> Login(LoginDto dto)
         {
             var user = await _userManager.FindByNameAsync(dto.Username);
@@ -67,10 +73,9 @@ namespace SchoolApi.Controllers
                 new Claim(ClaimTypes.Name, user.UserName!),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
-
             authClaims.AddRange(userRoles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-            var secretKey = _configuration["Jwt:SecretKey"];
+            var secretKey = _configuration["Jwt:Key"];
             var issuer = _configuration["Jwt:Issuer"];
             var audience = _configuration["Jwt:Audience"];
             if (string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
@@ -80,7 +85,7 @@ namespace SchoolApi.Controllers
             var token = new JwtSecurityToken(
                 issuer: issuer,
                 audience: audience,
-                expires: DateTime.UtcNow.AddHours(2),
+                expires: DateTime.UtcNow.AddHours(2), // Consider using a more specific time like AddMinutes or AddDays
                 claims: authClaims,
                 signingCredentials: new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256)
             );

@@ -9,19 +9,28 @@ using SchoolApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Logging
-builder.Host.UseSerilog((ctx, lc) => lc
-    .WriteTo.Console()
-    .WriteTo.File("Logs/log.txt", rollingInterval: RollingInterval.Day));
+// Serilog logging
+builder.Host.UseSerilog((ctx, lc) =>
+    lc.ReadFrom.Configuration(ctx.Configuration)
+      .WriteTo.Console()
+      .WriteTo.File("Logs/log.txt", rollingInterval: RollingInterval.Day));
 
-// Add DbContext
+// Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Identity
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    // Optional: adjust password policy
+    options.Password.RequireDigit = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequiredLength = 6;
+})
+.AddEntityFrameworkStores<ApplicationDbContext>()
+.AddDefaultTokenProviders();
 
 // JWT
 var jwtKey = builder.Configuration["Jwt:Key"];
@@ -47,7 +56,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// CORS (optional – adjust allowed origins as needed!)
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -58,16 +67,12 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddAuthorization();
-
+// Controllers, Swagger
 builder.Services.AddControllers();
-
-// Swagger with JWT support
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new() { Title = "School API", Version = "v1" });
-    // JWT auth in Swagger
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -96,20 +101,22 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 app.UseSerilogRequestLogging();
+
 app.UseHttpsRedirection();
-
-app.UseCors("AllowAll"); // 🚀 Apply CORS
-
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseSwagger();
-app.UseSwaggerUI(options =>
+// Swagger only in development
+if (app.Environment.IsDevelopment())
 {
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "School API V1");
-    options.RoutePrefix = string.Empty; // Swagger at root: https://localhost:5001/
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "School API V1");
+        options.RoutePrefix = string.Empty;
+    });
+}
 
 app.MapControllers();
-
 app.Run();
