@@ -1,102 +1,143 @@
+using System;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using SchoolApi.Models;
 using SchoolApi.Models.DTOs;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.AspNetCore.Authorization; // Add this using directive
+using Microsoft.Extensions.Configuration;
 
 namespace SchoolApi.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
+    [ApiController]
     public class AuthController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IConfiguration _configuration;
+        private readonly RoleManager<IdentityRole> _roleManager;
 
-        public AuthController(
-            UserManager<ApplicationUser> userManager,
-            RoleManager<IdentityRole> roleManager,
-            IConfiguration configuration)
+        public AuthController(UserManager<ApplicationUser> userManager,
+                              SignInManager<ApplicationUser> signInManager,
+                              IConfiguration configuration,
+                              RoleManager<IdentityRole> roleManager)
         {
             _userManager = userManager;
-            _roleManager = roleManager;
+            _signInManager = signInManager;
             _configuration = configuration;
+            _roleManager = roleManager;
         }
 
         [HttpPost("register")]
-        [AllowAnonymous] // <--- ADD THIS LINE
-        public async Task<IActionResult> Register(RegisterDto dto)
+        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
-            if (await _userManager.FindByNameAsync(dto.Username) != null)
-                return BadRequest(new { message = "User already exists." });
-
-            var user = new ApplicationUser
+            if (!ModelState.IsValid)
             {
-                UserName = dto.Username,
-                Email = dto.Email,
-                FirstName = dto.FirstName,
-                LastName = dto.LastName
-            };
-
-            var createResult = await _userManager.CreateAsync(user, dto.Password);
-            if (!createResult.Succeeded)
-                return BadRequest(new { errors = createResult.Errors });
-
-            // Create role if it doesn't exist
-            if (!await _roleManager.RoleExistsAsync(dto.Role))
-            {
-                var roleResult = await _roleManager.CreateAsync(new IdentityRole(dto.Role));
-                if (!roleResult.Succeeded)
-                    return StatusCode(500, new { message = "Failed to create role." });
+                return BadRequest(ModelState);
             }
 
-            await _userManager.AddToRoleAsync(user, dto.Role);
-            return Ok(new { message = "User registered successfully." });
+            var userExists = await _userManager.FindByNameAsync(registerDto.Username);
+            if (userExists != null)
+            {
+                return BadRequest(new { Message = "Username already exists." });
+            }
+
+            var emailExists = await _userManager.FindByEmailAsync(registerDto.Email);
+            if (emailExists != null)
+            {
+                return BadRequest(new { Message = "Email already registered." });
+            }
+
+            ApplicationUser user = new()
+            {
+                Email = registerDto.Email,
+                SecurityStamp = Guid.NewGuid().ToString(),
+                UserName = registerDto.Username,
+                FirstName = registerDto.FirstName,
+                LastName = registerDto.LastName
+            };
+            var result = await _userManager.CreateAsync(user, registerDto.Password);
+
+            if (!result.Succeeded)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "User creation failed! Please check user details and try again.", Errors = result.Errors });
+            }
+
+            if (!await _roleManager.RoleExistsAsync("Student"))
+            {
+                await _roleManager.CreateAsync(new IdentityRole("Student"));
+            }
+            await _userManager.AddToRoleAsync(user, "Student");
+
+            return Ok(new { Message = "User registered successfully as Student!" });
         }
 
         [HttpPost("login")]
-        [AllowAnonymous] // <--- ADD THIS LINE
-        public async Task<IActionResult> Login(LoginDto dto)
+        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
-            var user = await _userManager.FindByNameAsync(dto.Username);
-            if (user == null || !await _userManager.CheckPasswordAsync(user, dto.Password))
-                return Unauthorized(new { message = "Invalid credentials." });
-
-            var userRoles = await _userManager.GetRolesAsync(user);
-            var authClaims = new List<Claim>
+            if (!ModelState.IsValid)
             {
-                new Claim(ClaimTypes.Name, user.UserName!),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                return BadRequest(ModelState);
+            }
+
+            var user = await _userManager.FindByNameAsync(loginDto.Username);
+
+            if (user == null)
+            {
+                return Unauthorized(new { Message = "Invalid credentials." });
+            }
+
+            var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
+
+            if (!result.Succeeded)
+            {
+                return Unauthorized(new { Message = "Invalid credentials." });
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var token = GenerateJwtToken(user, roles);
+
+            return Ok(new LoginResponseDto
+            {
+                Token = token,
+                Expiration = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:TokenValidityInMinutes"]!)), // Add '!'
+                Username = user.UserName!, // Add '!'
+                Email = user.Email!, // Add '!'
+                Roles = roles.ToList()
+            });
+        }
+
+        private string GenerateJwtToken(ApplicationUser user, IList<string> roles)
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, user.UserName!), // Add '!'
+                new Claim(ClaimTypes.Email, user.Email!), // Add '!'
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Id)
             };
-            authClaims.AddRange(userRoles.Select(role => new Claim(ClaimTypes.Role, role)));
 
-            var secretKey = _configuration["Jwt:Key"];
-            var issuer = _configuration["Jwt:Issuer"];
-            var audience = _configuration["Jwt:Audience"];
-            if (string.IsNullOrEmpty(secretKey) || string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience))
-                return StatusCode(500, new { message = "JWT configuration is missing." });
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
-            var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!)); // Add '!'
+            var tokenValidityInMinutes = Convert.ToDouble(_configuration["Jwt:TokenValidityInMinutes"]!); // Add '!'
+
             var token = new JwtSecurityToken(
-                issuer: issuer,
-                audience: audience,
-                expires: DateTime.UtcNow.AddHours(2), // Consider using a more specific time like AddMinutes or AddDays
-                claims: authClaims,
-                signingCredentials: new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256)
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                expires: DateTime.UtcNow.AddMinutes(tokenValidityInMinutes),
+                claims: claims,
+                signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
             );
 
-            return Ok(new
-            {
-                token = new JwtSecurityTokenHandler().WriteToken(token),
-                expiration = token.ValidTo,
-                username = user.UserName,
-                roles = userRoles
-            });
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

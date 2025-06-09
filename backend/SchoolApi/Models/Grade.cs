@@ -1,29 +1,28 @@
-using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SchoolApi.Models
 {
     public class Grade
-{
-    public int Id { get; set; }
+    {
+        [Key]
+        public int GradeId { get; set; } // Changed to GradeId from Id
+        [Required]
+        [Range(0, 100)]
+        public decimal Score { get; set; }
+        [Required]
+        public DateTime DateAwarded { get; set; }
+        [StringLength(500)]
+        public string? Comments { get; set; } // Made nullable, as comments can be optional
 
-    [Required]
-    public float Score { get; set; }
+        // Foreign keys and navigation properties
+        public int StudentId { get; set; }
+        public required Student Student { get; set; } // Mark as required
 
-    [Required]
-    public DateTime DateAwarded { get; set; }
+        public int CourseId { get; set; }
+        public required Course Course { get; set; } // Mark as required
 
-    [Required]
-    public int StudentId { get; set; }
-    public Student Student { get; set; } = null!;
-
-    [Required]
-    public int TeacherId { get; set; }
-    public Teacher Teacher { get; set; } = null!;
-
-    [Required]
-    public int CourseId { get; set; }
-    public Course Course { get; set; } = null!;
-}
-
+        public int TeacherId { get; set; }
+        public required Teacher Teacher { get; set; } // Mark as required
+    }
 }

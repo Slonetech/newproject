@@ -4,17 +4,20 @@ namespace SchoolApi.Models
 {
     public class Course
     {
-        public int Id { get; set; }
-
+        [Key]
+        public int CourseId { get; set; } // Changed to CourseId from Id
         [Required]
-        public string Name { get; set; } = string.Empty;
+        [StringLength(200)]
+        public required string Title { get; set; } // Mark as required
+        [StringLength(500)]
+        public string? Description { get; set; } // Made nullable
 
-        // Navigation property for the many-to-many relationship
+        public int Credits { get; set; }
+
+        // Navigation properties for relationships
         public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
-
-        // If you have grades as well:
+        public ICollection<TeacherCourse> TeacherCourses { get; set; } = new List<TeacherCourse>();
         public ICollection<Grade> Grades { get; set; } = new List<Grade>();
+        public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
     }
-
-
 }

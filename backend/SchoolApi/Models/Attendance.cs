@@ -1,28 +1,34 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SchoolApi.Models
 {
     public enum AttendanceStatus
     {
-        Absent = 0,
-        Present = 1,
-        Excused = 2
+        Present,
+        Absent,
+        Late
     }
 
     public class Attendance
     {
-        public int Id { get; set; }
-
+        [Key]
+        public int AttendanceId { get; set; } // Changed to AttendanceId from Id
+        [Required]
+        public DateTime Date { get; set; }
         [Required]
         public AttendanceStatus Status { get; set; }
+        [StringLength(500)]
+        public string? Remarks { get; set; } // Made nullable
 
-        [Required]
+        // Foreign keys and navigation properties
         public int StudentId { get; set; }
-        public Student Student { get; set; } = null!;
+        public required Student Student { get; set; } // Mark as required
 
-        [Required]
+        public int CourseId { get; set; }
+        public required Course Course { get; set; } // Mark as required
+
         public int TeacherId { get; set; }
-        public Teacher Teacher { get; set; } = null!;
+        public required Teacher Teacher { get; set; } // Mark as required
     }
-
 }

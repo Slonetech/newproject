@@ -1,15 +1,12 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
-using SchoolApi.DTOs;
-using SchoolApi.Models;
+using SchoolApi.Models; // Ensure this is correct
 
 namespace SchoolApi.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [ApiController]
     public class GradesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -21,115 +18,92 @@ namespace SchoolApi.Controllers
 
         // GET: api/Grades
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<GradeDto>>> GetGrades()
+        public async Task<ActionResult<IEnumerable<Grade>>> GetGrades()
         {
-            var grades = await _context.Grades
-                .Include(g => g.Student)
-                .Include(g => g.Course)
-                .Select(g => new GradeDto
-                {
-                    Id = g.Id,
-                    Score = g.Score,
-                    DateAwarded = g.DateAwarded,
-                    StudentId = g.StudentId,
-                    TeacherId = g.TeacherId,
-                    CourseId = g.CourseId,
-                    StudentName = g.Student.User.FirstName + " " + g.Student.User.LastName,
-                    CourseName = g.Course.Name
-                })
-                .ToListAsync();
-
-            return Ok(grades);
+            return await _context.Grades
+                                 .Include(g => g.Student)
+                                 .Include(g => g.Course)
+                                 .Include(g => g.Teacher)
+                                 .ToListAsync();
         }
 
         // GET: api/Grades/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<GradeDto>> GetGrade(int id)
+        public async Task<ActionResult<Grade>> GetGrade(int id)
         {
             var grade = await _context.Grades
-                .Include(g => g.Student)
-                .Include(g => g.Course)
-                .Select(g => new GradeDto
-                {
-                    Id = g.Id,
-                    Score = g.Score,
-                    DateAwarded = g.DateAwarded,
-                    StudentId = g.StudentId,
-                    TeacherId = g.TeacherId,
-                    CourseId = g.CourseId,
-                    StudentName = g.Student.User.FirstName + " " + g.Student.User.LastName,
-                    CourseName = g.Course.Name
-                })
-                .FirstOrDefaultAsync(g => g.Id == id);
+                                      .Include(g => g.Student)
+                                      .Include(g => g.Course)
+                                      .Include(g => g.Teacher)
+                                      .FirstOrDefaultAsync(g => g.GradeId == id); // Corrected to GradeId
 
             if (grade == null)
+            {
                 return NotFound();
+            }
 
-            return Ok(grade);
-        }
-
-        // POST: api/Grades
-        [HttpPost]
-        [Authorize(Roles = "Admin,Teacher")]
-        public async Task<ActionResult<GradeDto>> CreateGrade(GradeCreateDto dto)
-        {
-            var grade = new Grade
-            {
-                Score = dto.Score,
-                DateAwarded = dto.DateAwarded,
-                StudentId = dto.StudentId,
-                TeacherId = dto.TeacherId,
-                CourseId = dto.CourseId
-            };
-
-            _context.Grades.Add(grade);
-            await _context.SaveChangesAsync();
-
-            var result = new GradeDto
-            {
-                Id = grade.Id,
-                Score = grade.Score,
-                DateAwarded = grade.DateAwarded,
-                StudentId = grade.StudentId,
-                TeacherId = grade.TeacherId,
-                CourseId = grade.CourseId
-            };
-
-            return CreatedAtAction(nameof(GetGrade), new { id = grade.Id }, result);
+            return grade;
         }
 
         // PUT: api/Grades/5
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Teacher")]
-        public async Task<IActionResult> UpdateGrade(int id, GradeCreateDto dto)
+        public async Task<IActionResult> PutGrade(int id, Grade grade)
         {
-            var grade = await _context.Grades.FindAsync(id);
-            if (grade == null)
-                return NotFound();
+            if (id != grade.GradeId) // Corrected to GradeId
+            {
+                return BadRequest();
+            }
 
-            grade.Score = dto.Score;
-            grade.DateAwarded = dto.DateAwarded;
-            grade.StudentId = dto.StudentId;
-            grade.TeacherId = dto.TeacherId;
-            grade.CourseId = dto.CourseId;
+            _context.Entry(grade).State = EntityState.Modified;
 
-            await _context.SaveChangesAsync();
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!GradeExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
             return NoContent();
+        }
+
+        // POST: api/Grades
+        [HttpPost]
+        public async Task<ActionResult<Grade>> PostGrade(Grade grade)
+        {
+            _context.Grades.Add(grade);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetGrade", new { id = grade.GradeId }, grade); // Corrected to GradeId
         }
 
         // DELETE: api/Grades/5
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteGrade(int id)
         {
             var grade = await _context.Grades.FindAsync(id);
             if (grade == null)
+            {
                 return NotFound();
+            }
 
             _context.Grades.Remove(grade);
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        private bool GradeExists(int id)
+        {
+            return _context.Grades.Any(e => e.GradeId == id); // Corrected to GradeId
         }
     }
 }

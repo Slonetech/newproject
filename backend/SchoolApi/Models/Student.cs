@@ -4,26 +4,34 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace SchoolApi.Models
 {
     public class Student
-{
-    [Key]
-    public int Id { get; set; }
+    {
+        [Key]
+        public int StudentId { get; set; }
+        [Required]
+        [StringLength(100)]
+        public required string FirstName { get; set; } // Mark as required
+        [Required]
+        [StringLength(100)]
+        public required string LastName { get; set; } // Mark as required
+        [Required]
+        [StringLength(255)]
+        [EmailAddress]
+        public required string Email { get; set; } // Mark as required
+        public DateTime DateOfBirth { get; set; }
+        public required string Address { get; set; } // Mark as required
+        public required string PhoneNumber { get; set; } // Mark as required
 
-    [Required]
-    public string AdmissionNumber { get; set; } = null!;
+        // Foreign key for ApplicationUser (can be null if not linked to an Identity user)
+        public string? UserId { get; set; }
+        public ApplicationUser? User { get; set; } // Mark as nullable
 
-    [Required]
-    public string GradeLevel { get; set; } = null!;
+        // Navigation properties for relationships
+        public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
+        public ICollection<Grade> Grades { get; set; } = new List<Grade>();
+        public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
 
-    public int? ParentId { get; set; }
-    public Parent? Parent { get; set; }
-
-    public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
-    public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
-    public ICollection<Grade> Grades { get; set; } = new List<Grade>();
-
-    [Required]
-    public string UserId { get; set; } = null!;
-    public ApplicationUser User { get; set; } = null!;
-}
-
+        // Relationship with Parent (can be null if student doesn't have a parent linked yet)
+        public int? ParentId { get; set; }
+        public Parent? Parent { get; set; } // Mark as nullable
+    }
 }

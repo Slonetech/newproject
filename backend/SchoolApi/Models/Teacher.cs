@@ -1,22 +1,32 @@
-using System.Collections.Generic;
-
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SchoolApi.Models
 {
     public class Teacher
-{
-    public int Id { get; set; }
+    {
+        [Key]
+        public int TeacherId { get; set; }
+        [Required]
+        [StringLength(100)]
+        public required string FirstName { get; set; } // Mark as required
+        [Required]
+        [StringLength(100)]
+        public required string LastName { get; set; } // Mark as required
+        [Required]
+        [StringLength(255)]
+        [EmailAddress]
+        public required string Email { get; set; } // Mark as required
+        public required string PhoneNumber { get; set; } // Mark as required
+        public required string Department { get; set; } // Mark as required
 
-    [Required]
-    public string Subject { get; set; } = null!;
+        // Foreign key for ApplicationUser (can be null if not linked to an Identity user)
+        public string? UserId { get; set; }
+        public ApplicationUser? User { get; set; } // Mark as nullable
 
-    public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
-    public ICollection<Grade> Grades { get; set; } = new List<Grade>();
-
-    [Required]
-    public string UserId { get; set; } = null!;
-    public ApplicationUser User { get; set; } = null!;
-}
-
+        // Navigation property for relationships
+        public ICollection<TeacherCourse> TeacherCourses { get; set; } = new List<TeacherCourse>();
+        public ICollection<Grade> AssignedGrades { get; set; } = new List<Grade>();
+        public ICollection<Attendance> MarkedAttendances { get; set; } = new List<Attendance>();
+    }
 }

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
@@ -6,9 +5,8 @@ using SchoolApi.Models;
 
 namespace SchoolApi.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [ApiController]
     public class CoursesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -18,37 +16,45 @@ namespace SchoolApi.Controllers
             _context = context;
         }
 
+        // GET: api/Courses
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Course>>> GetCourses()
         {
-            return Ok(await _context.Courses.ToListAsync());
+            return await _context.Courses
+                                 .Include(c => c.TeacherCourses) // Include teachers assigned
+                                     .ThenInclude(tc => tc.Teacher)
+                                 .Include(c => c.StudentCourses) // Include students enrolled
+                                     .ThenInclude(sc => sc.Student)
+                                 .ToListAsync();
         }
 
+        // GET: api/Courses/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Course>> GetCourse(int id)
         {
-            var course = await _context.Courses.FindAsync(id);
+            var course = await _context.Courses
+                                       .Include(c => c.TeacherCourses)
+                                            .ThenInclude(tc => tc.Teacher)
+                                       .Include(c => c.StudentCourses)
+                                            .ThenInclude(sc => sc.Student)
+                                       .FirstOrDefaultAsync(c => c.CourseId == id); // Corrected to CourseId
+
             if (course == null)
+            {
                 return NotFound();
+            }
 
-            return Ok(course);
+            return course;
         }
 
-        [HttpPost]
-        [Authorize(Roles = "Admin,Teacher")]
-        public async Task<ActionResult<Course>> CreateCourse(Course course)
-        {
-            _context.Courses.Add(course);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetCourse), new { id = course.Id }, course);
-        }
-
+        // PUT: api/Courses/5
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Teacher")]
-        public async Task<IActionResult> UpdateCourse(int id, Course course)
+        public async Task<IActionResult> PutCourse(int id, Course course)
         {
-            if (id != course.Id)
+            if (id != course.CourseId) // Corrected to CourseId
+            {
                 return BadRequest();
+            }
 
             _context.Entry(course).State = EntityState.Modified;
 
@@ -59,27 +65,47 @@ namespace SchoolApi.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 if (!CourseExists(id))
+                {
                     return NotFound();
+                }
                 else
+                {
                     throw;
+                }
             }
 
             return NoContent();
         }
 
+        // POST: api/Courses
+        [HttpPost]
+        public async Task<ActionResult<Course>> PostCourse(Course course)
+        {
+            _context.Courses.Add(course);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction("GetCourse", new { id = course.CourseId }, course); // Corrected to CourseId
+        }
+
+        // DELETE: api/Courses/5
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteCourse(int id)
         {
             var course = await _context.Courses.FindAsync(id);
             if (course == null)
+            {
                 return NotFound();
+            }
 
             _context.Courses.Remove(course);
             await _context.SaveChangesAsync();
+
             return NoContent();
         }
 
-        private bool CourseExists(int id) => _context.Courses.Any(e => e.Id == id);
+        private bool CourseExists(int id)
+        {
+            return _context.Courses.Any(e => e.CourseId == id); // Corrected to CourseId
+        }
     }
 }
