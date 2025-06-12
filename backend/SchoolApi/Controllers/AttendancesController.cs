@@ -1,41 +1,46 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
-using SchoolApi.Models; // Ensure this is correct
+using SchoolApi.Models;
+using SchoolApi.Services;
+using System;
+using System.Threading.Tasks;
 
 namespace SchoolApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class AttendancesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        private readonly IEmailService _emailService;
 
-        public AttendancesController(ApplicationDbContext context)
+        public AttendancesController(ApplicationDbContext context, IEmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
         }
 
-        // GET: api/Attendances
         [HttpGet]
+        [Authorize(Roles = "Admin,Teacher")]
         public async Task<ActionResult<IEnumerable<Attendance>>> GetAttendances()
         {
             return await _context.Attendances
-                                 .Include(a => a.Student)
-                                 .Include(a => a.Course)
-                                 .Include(a => a.Teacher)
-                                 .ToListAsync();
+                .Include(a => a.Student)
+                .Include(a => a.Course)
+                .ToListAsync();
         }
 
-        // GET: api/Attendances/5
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin,Teacher")]
         public async Task<ActionResult<Attendance>> GetAttendance(int id)
         {
             var attendance = await _context.Attendances
-                                           .Include(a => a.Student)
-                                           .Include(a => a.Course)
-                                           .Include(a => a.Teacher)
-                                           .FirstOrDefaultAsync(a => a.AttendanceId == id); // Corrected to AttendanceId
+                .Include(a => a.Student)
+                .Include(a => a.Course)
+                .FirstOrDefaultAsync(a => a.Id == id);
 
             if (attendance == null)
             {
@@ -45,21 +50,114 @@ namespace SchoolApi.Controllers
             return attendance;
         }
 
-        // PUT: api/Attendances/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutAttendance(int id, Attendance attendance)
+        [HttpGet("student/{studentId}")]
+        public async Task<ActionResult<IEnumerable<Attendance>>> GetStudentAttendances(int studentId)
         {
-            if (id != attendance.AttendanceId) // Corrected to AttendanceId
+            return await _context.Attendances
+                .Include(a => a.Course)
+                .Where(a => a.StudentId == studentId)
+                .ToListAsync();
+        }
+
+        [HttpGet("course/{courseId}")]
+        public async Task<ActionResult<IEnumerable<Attendance>>> GetCourseAttendances(int courseId)
+        {
+            return await _context.Attendances
+                .Include(a => a.Student)
+                .Where(a => a.CourseId == courseId)
+                .ToListAsync();
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin,Teacher")]
+        public async Task<ActionResult<Attendance>> CreateAttendance(Attendance attendance)
+        {
+            var student = await _context.Students
+                .Include(s => s.Parents)
+                .FirstOrDefaultAsync(s => s.Id == attendance.StudentId);
+
+            if (student == null)
+            {
+                return NotFound("Student not found");
+            }
+
+            var course = await _context.Courses.FindAsync(attendance.CourseId);
+            if (course == null)
+            {
+                return NotFound("Course not found");
+            }
+
+            _context.Attendances.Add(attendance);
+            await _context.SaveChangesAsync();
+
+            // Send email notification to parents
+            foreach (var parent in student.Parents)
+            {
+                try
+                {
+                    await _emailService.SendAttendanceNotificationAsync(
+                        parent.Email,
+                        student.FirstName,
+                        student.LastName,
+                        course.Title,
+                        attendance.IsPresent,
+                        attendance.Date
+                    );
+                }
+                catch (Exception)
+                {
+                    // Log the error but don't fail the request
+                }
+            }
+
+            return CreatedAtAction(nameof(GetAttendance), new { id = attendance.Id }, attendance);
+        }
+
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin,Teacher")]
+        public async Task<IActionResult> UpdateAttendance(int id, Attendance attendance)
+        {
+            if (id != attendance.Id)
             {
                 return BadRequest();
             }
 
-            _context.Entry(attendance).State = EntityState.Modified;
+            var existingAttendance = await _context.Attendances
+                .Include(a => a.Student)
+                .ThenInclude(s => s.Parents)
+                .Include(a => a.Course)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (existingAttendance == null)
+            {
+                return NotFound();
+            }
+
+            _context.Entry(existingAttendance).CurrentValues.SetValues(attendance);
 
             try
             {
                 await _context.SaveChangesAsync();
+
+                // Send email notification to parents
+                foreach (var parent in existingAttendance.Student.Parents)
+                {
+                    try
+                    {
+                        await _emailService.SendAttendanceNotificationAsync(
+                            parent.Email,
+                            existingAttendance.Student.FirstName,
+                            existingAttendance.Student.LastName,
+                            existingAttendance.Course.Title,
+                            attendance.IsPresent,
+                            attendance.Date
+                        );
+                    }
+                    catch (Exception)
+                    {
+                        // Log the error but don't fail the request
+                    }
+                }
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -76,19 +174,8 @@ namespace SchoolApi.Controllers
             return NoContent();
         }
 
-        // POST: api/Attendances
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<Attendance>> PostAttendance(Attendance attendance)
-        {
-            _context.Attendances.Add(attendance);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetAttendance", new { id = attendance.AttendanceId }, attendance); // Corrected to AttendanceId
-        }
-
-        // DELETE: api/Attendances/5
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteAttendance(int id)
         {
             var attendance = await _context.Attendances.FindAsync(id);
@@ -105,7 +192,7 @@ namespace SchoolApi.Controllers
 
         private bool AttendanceExists(int id)
         {
-            return _context.Attendances.Any(e => e.AttendanceId == id); // Corrected to AttendanceId
+            return _context.Attendances.Any(e => e.Id == id);
         }
     }
 }

@@ -6,27 +6,28 @@ namespace SchoolApi.Models
     public class Teacher
     {
         [Key]
-        public int TeacherId { get; set; }
+        public int Id { get; set; }
+
         [Required]
-        [StringLength(100)]
-        public required string FirstName { get; set; } // Mark as required
+        public string UserId { get; set; } = string.Empty;
+
         [Required]
-        [StringLength(100)]
-        public required string LastName { get; set; } // Mark as required
+        public string FirstName { get; set; } = string.Empty;
+
         [Required]
-        [StringLength(255)]
+        public string LastName { get; set; } = string.Empty;
+
+        [Required]
         [EmailAddress]
-        public required string Email { get; set; } // Mark as required
-        public required string PhoneNumber { get; set; } // Mark as required
-        public required string Department { get; set; } // Mark as required
+        public string Email { get; set; } = string.Empty;
 
-        // Foreign key for ApplicationUser (can be null if not linked to an Identity user)
-        public string? UserId { get; set; }
-        public ApplicationUser? User { get; set; } // Mark as nullable
+        [Phone]
+        public string PhoneNumber { get; set; } = string.Empty;
 
-        // Navigation property for relationships
-        public ICollection<TeacherCourse> TeacherCourses { get; set; } = new List<TeacherCourse>();
-        public ICollection<Grade> AssignedGrades { get; set; } = new List<Grade>();
-        public ICollection<Attendance> MarkedAttendances { get; set; } = new List<Attendance>();
+        public string Department { get; set; } = string.Empty;
+
+        // Navigation properties
+        public ApplicationUser User { get; set; } = null!;
+        public ICollection<Course> Courses { get; set; } = new List<Course>();
     }
 }

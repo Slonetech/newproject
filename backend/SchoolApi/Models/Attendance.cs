@@ -3,32 +3,31 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SchoolApi.Models
 {
-    public enum AttendanceStatus
-    {
-        Present,
-        Absent,
-        Late
-    }
-
     public class Attendance
     {
         [Key]
-        public int AttendanceId { get; set; } // Changed to AttendanceId from Id
+        public int Id { get; set; }
+
+        [Required]
+        public int StudentId { get; set; }
+
+        [Required]
+        public int CourseId { get; set; }
+
         [Required]
         public DateTime Date { get; set; }
+
         [Required]
-        public AttendanceStatus Status { get; set; }
+        public bool IsPresent { get; set; }
+
         [StringLength(500)]
-        public string? Remarks { get; set; } // Made nullable
+        public string? Comments { get; set; }
 
-        // Foreign keys and navigation properties
-        public int StudentId { get; set; }
-        public required Student Student { get; set; } // Mark as required
+        // Navigation properties
+        [ForeignKey("StudentId")]
+        public Student Student { get; set; } = null!;
 
-        public int CourseId { get; set; }
-        public required Course Course { get; set; } // Mark as required
-
-        public int TeacherId { get; set; }
-        public required Teacher Teacher { get; set; } // Mark as required
+        [ForeignKey("CourseId")]
+        public Course Course { get; set; } = null!;
     }
 }

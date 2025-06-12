@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
 using SchoolApi.Models;
-using SchoolApi.Models.DTOs.Admin; // Import new DTOs
+using SchoolApi.Models.DTOs.Users;
 
 namespace SchoolApi.Controllers
 {
@@ -35,36 +35,39 @@ namespace SchoolApi.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
         {
-            var users = await _userManager.Users.ToListAsync();
-            var userDtos = new List<UserDto>();
-
-            foreach (var user in users)
+            try
             {
-                var roles = await _userManager.GetRolesAsync(user);
-                var userDto = new UserDto
+                // Get all users first
+                var users = await _userManager.Users.ToListAsync();
+                var userDtos = new List<UserDto>();
+
+                // Process each user's roles separately
+                foreach (var user in users)
                 {
-                    Id = user.Id,
-                    Username = user.UserName ?? string.Empty, // Handle potential null from ApplicationUser
-                    Email = user.Email ?? string.Empty,       // Handle potential null from ApplicationUser
-                    FirstName = user.FirstName ?? string.Empty, // Handle potential null from ApplicationUser
-                    LastName = user.LastName ?? string.Empty,   // Handle potential null from ApplicationUser
-                    Roles = roles.ToList()
-                };
+                    // Get roles for the current user
+                    var roles = await _userManager.GetRolesAsync(user);
 
-                // Try to link to specific profiles if they exist
-                var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == user.Id);
-                if (student != null) userDto.StudentId = student.StudentId;
+                    // Create DTO for the current user
+                    var userDto = new UserDto
+                    {
+                        Id = user.Id,
+                        UserName = user.UserName ?? string.Empty,
+                        Email = user.Email ?? string.Empty,
+                        FirstName = user.FirstName,
+                        LastName = user.LastName,
+                        Roles = roles.ToList()
+                    };
 
-                var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == user.Id);
-                if (teacher != null) userDto.TeacherId = teacher.TeacherId;
+                    userDtos.Add(userDto);
+                }
 
-                var parent = await _context.Parents.FirstOrDefaultAsync(p => p.UserId == user.Id);
-                if (parent != null) userDto.ParentId = parent.ParentId;
-
-                userDtos.Add(userDto);
+                return Ok(userDtos);
             }
-
-            return Ok(userDtos);
+            catch (Exception ex)
+            {
+                // Log the exception
+                return StatusCode(500, new { Message = "An error occurred while fetching users.", Error = ex.Message });
+            }
         }
 
         // GET: api/Users/{id}
@@ -75,142 +78,123 @@ namespace SchoolApi.Controllers
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
             {
-                return NotFound("User not found.");
+                return NotFound();
             }
 
             var roles = await _userManager.GetRolesAsync(user);
-            var userDto = new UserDto
+            return new UserDto
             {
                 Id = user.Id,
-                Username = user.UserName ?? string.Empty,
+                UserName = user.UserName ?? string.Empty,
                 Email = user.Email ?? string.Empty,
-                FirstName = user.FirstName ?? string.Empty,
-                LastName = user.LastName ?? string.Empty,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
                 Roles = roles.ToList()
             };
-
-            var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == user.Id);
-            if (student != null) userDto.StudentId = student.StudentId;
-
-            var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == user.Id);
-            if (teacher != null) userDto.TeacherId = teacher.TeacherId;
-
-            var parent = await _context.Parents.FirstOrDefaultAsync(p => p.UserId == user.Id);
-            if (parent != null) userDto.ParentId = parent.ParentId;
-
-            return Ok(userDto);
         }
 
         // POST: api/Users
         // Create a new ApplicationUser with an initial role and optional profile
         [HttpPost]
-        public async Task<IActionResult> CreateUser([FromBody] UserCreationDto userCreationDto)
+        public async Task<ActionResult<UserDto>> CreateUser(CreateUserDto createUserDto)
         {
-            if (!ModelState.IsValid)
+            try
             {
-                // Return specific validation errors from ModelState
-                return BadRequest(ModelState);
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                // Check if username already exists
+                var existingUser = await _userManager.FindByNameAsync(createUserDto.UserName);
+                if (existingUser != null)
+                {
+                    return BadRequest(new { Message = "Username already exists." });
+                }
+
+                // Check if email already exists
+                var existingEmail = await _userManager.FindByEmailAsync(createUserDto.Email);
+                if (existingEmail != null)
+                {
+                    return BadRequest(new { Message = "Email already registered." });
+                }
+
+                var user = new ApplicationUser
+                {
+                    UserName = createUserDto.UserName,
+                    Email = createUserDto.Email,
+                    FirstName = createUserDto.FirstName,
+                    LastName = createUserDto.LastName
+                };
+
+                var result = await _userManager.CreateAsync(user, createUserDto.Password);
+                if (!result.Succeeded)
+                {
+                    return BadRequest(new { Message = "User creation failed.", Errors = result.Errors });
+                }
+
+                // Assign roles
+                if (createUserDto.Roles != null && createUserDto.Roles.Any())
+                {
+                    foreach (var role in createUserDto.Roles)
+                    {
+                        if (await _roleManager.RoleExistsAsync(role))
+                        {
+                            await _userManager.AddToRoleAsync(user, role);
+                        }
+                    }
+                }
+
+                // Get the user's roles after assignment
+                var roles = await _userManager.GetRolesAsync(user);
+                return Ok(new UserDto
+                {
+                    Id = user.Id,
+                    UserName = user.UserName ?? string.Empty,
+                    Email = user.Email ?? string.Empty,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Roles = roles.ToList()
+                });
             }
-
-            // [Required] attributes on UserCreationDto properties handle these checks
-            // So, explicit null checks here are redundant if ModelState.IsValid is false.
-            // However, the compiler might still warn if not explicitly handled here.
-            // For robustness, ensure UserCreationDto fields are not null from the client.
-
-            var userExists = await _userManager.FindByNameAsync(userCreationDto.Username);
-            if (userExists != null)
+            catch (Exception ex)
             {
-                return BadRequest(new { Message = "Username already exists." });
+                return StatusCode(500, new { Message = "An error occurred while creating the user.", Error = ex.Message });
             }
-
-            var emailExists = await _userManager.FindByEmailAsync(userCreationDto.Email);
-            if (emailExists != null)
-            {
-                return BadRequest(new { Message = "Email already registered." });
-            }
-
-            var newUser = new ApplicationUser
-            {
-                UserName = userCreationDto.Username,
-                Email = userCreationDto.Email,
-                EmailConfirmed = true,
-                FirstName = userCreationDto.FirstName,
-                LastName = userCreationDto.LastName,
-                SecurityStamp = Guid.NewGuid().ToString()
-            };
-
-            var createResult = await _userManager.CreateAsync(newUser, userCreationDto.Password);
-            if (!createResult.Succeeded)
-            {
-                return BadRequest(new { Message = "User creation failed.", Errors = createResult.Errors });
-            }
-
-            // Assign initial role
-            // userCreationDto.InitialRole is [Required] string, so it should not be null
-            if (!await _roleManager.RoleExistsAsync(userCreationDto.InitialRole))
-            {
-                return BadRequest(new { Message = $"Role '{userCreationDto.InitialRole}' does not exist." });
-            }
-            await _userManager.AddToRoleAsync(newUser, userCreationDto.InitialRole);
-
-            // OPTION: Automatically create a profile based on the initial role
-            // newUser.FirstName, newUser.LastName, newUser.Email are assigned from userCreationDto,
-            // which has them as [Required] string. So they should not be null.
-            await CreateUserProfile(newUser, userCreationDto.InitialRole, newUser.FirstName, newUser.LastName, newUser.Email);
-
-            return CreatedAtAction(nameof(GetUser), new { id = newUser.Id }, new { Message = "User created successfully with role." });
         }
 
         // PUT: api/Users/{id}
         // Update user details
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateUser(string id, [FromBody] UserUpdateDto userUpdateDto)
+        public async Task<IActionResult> UpdateUser(string id, UpdateUserDto updateUserDto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
             {
-                return NotFound("User not found.");
+                return NotFound();
             }
 
-            if (!string.IsNullOrEmpty(userUpdateDto.Username) && userUpdateDto.Username != user.UserName)
+            user.FirstName = updateUserDto.FirstName;
+            user.LastName = updateUserDto.LastName;
+            user.Email = updateUserDto.Email;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
             {
-                // userUpdateDto.Username is nullable, but we check for null/empty.
-                // FindByNameAsync expects non-null string, so use null-forgiving operator if sure.
-                var userByUsername = await _userManager.FindByNameAsync(userUpdateDto.Username!);
-                if (userByUsername != null && userByUsername.Id != id)
-                {
-                    return BadRequest(new { Message = "Username is already taken." });
-                }
-                user.UserName = userUpdateDto.Username;
-                user.NormalizedUserName = _userManager.NormalizeName(userUpdateDto.Username);
+                return BadRequest(result.Errors);
             }
 
-            if (!string.IsNullOrEmpty(userUpdateDto.Email) && userUpdateDto.Email != user.Email)
+            // Update roles
+            if (updateUserDto.Roles != null)
             {
-                // userUpdateDto.Email is nullable, but we check for null/empty.
-                var userByEmail = await _userManager.FindByEmailAsync(userUpdateDto.Email!);
-                if (userByEmail != null && userByEmail.Id != id)
-                {
-                    return BadRequest(new { Message = "Email is already taken." });
-                }
-                user.Email = userUpdateDto.Email;
-                user.NormalizedEmail = _userManager.NormalizeEmail(userUpdateDto.Email);
-            }
-
-            if (!string.IsNullOrEmpty(userUpdateDto.FirstName))
-            {
-                user.FirstName = userUpdateDto.FirstName;
-            }
-
-            if (!string.IsNullOrEmpty(userUpdateDto.LastName))
-            {
-                user.LastName = userUpdateDto.LastName;
-            }
-
-            var updateResult = await _userManager.UpdateAsync(user);
-            if (!updateResult.Succeeded)
-            {
-                return BadRequest(new { Message = "User update failed.", Errors = updateResult.Errors });
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                await _userManager.RemoveFromRolesAsync(user, currentRoles);
+                await _userManager.AddToRolesAsync(user, updateUserDto.Roles);
             }
 
             return NoContent();
@@ -224,153 +208,50 @@ namespace SchoolApi.Controllers
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
             {
-                return NotFound("User not found.");
+                return NotFound();
             }
 
-            var studentProfile = await _context.Students.FirstOrDefaultAsync(s => s.UserId == user.Id);
-            if (studentProfile != null) _context.Students.Remove(studentProfile);
-
-            var teacherProfile = await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == user.Id);
-            if (teacherProfile != null) _context.Teachers.Remove(teacherProfile);
-
-            var parentProfile = await _context.Parents.FirstOrDefaultAsync(p => p.UserId == user.Id);
-            if (parentProfile != null) _context.Parents.Remove(parentProfile);
-
-            await _context.SaveChangesAsync();
-
-            var deleteResult = await _userManager.DeleteAsync(user);
-            if (!deleteResult.Succeeded)
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
             {
-                return BadRequest(new { Message = "User deletion failed.", Errors = deleteResult.Errors });
+                return BadRequest(result.Errors);
             }
 
             return NoContent();
         }
 
-        // POST: api/Users/{userId}/assign-role
-        // Assign a role to a user
-        [HttpPost("{userId}/assign-role")]
-        public async Task<IActionResult> AssignRole(string userId, [FromBody] RoleAssignmentDto roleAssignmentDto)
+        // POST: api/Users/{id}/roles
+        // Assign roles to a user
+        [HttpPost("{id}/roles")]
+        public async Task<IActionResult> AssignRoles(string id, RoleAssignmentDto roleAssignmentDto)
         {
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _userManager.FindByIdAsync(id);
             if (user == null)
             {
-                return NotFound("User not found.");
+                return NotFound();
             }
 
-            // roleAssignmentDto.RoleName is [Required] string
-            if (string.IsNullOrEmpty(roleAssignmentDto.RoleName))
-            {
-                 return BadRequest(new { Message = "Role name must be provided." });
-            }
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            await _userManager.RemoveFromRolesAsync(user, currentRoles);
+            await _userManager.AddToRolesAsync(user, roleAssignmentDto.Roles);
 
-            if (!await _roleManager.RoleExistsAsync(roleAssignmentDto.RoleName))
-            {
-                return BadRequest(new { Message = $"Role '{roleAssignmentDto.RoleName}' does not exist." });
-            }
-
-            var result = await _userManager.AddToRoleAsync(user, roleAssignmentDto.RoleName);
-            if (!result.Succeeded)
-            {
-                return BadRequest(new { Message = "Failed to assign role.", Errors = result.Errors });
-            }
-
-            // user.FirstName etc. are nullable from ApplicationUser
-            await CreateUserProfile(user, roleAssignmentDto.RoleName, user.FirstName, user.LastName, user.Email);
-
-            return Ok(new { Message = $"Role '{roleAssignmentDto.RoleName}' assigned successfully." });
+            return NoContent();
         }
 
-        // POST: api/Users/{userId}/remove-role
-        // Remove a role from a user
-        [HttpPost("{userId}/remove-role")]
-        public async Task<IActionResult> RemoveRole(string userId, [FromBody] RoleAssignmentDto roleAssignmentDto)
+        // DELETE: api/Users/{id}/roles
+        // Remove roles from a user
+        [HttpDelete("{id}/roles")]
+        public async Task<IActionResult> RemoveRoles(string id, RoleAssignmentDto roleAssignmentDto)
         {
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _userManager.FindByIdAsync(id);
             if (user == null)
             {
-                return NotFound("User not found.");
+                return NotFound();
             }
 
-            // roleAssignmentDto.RoleName is [Required] string
-            if (string.IsNullOrEmpty(roleAssignmentDto.RoleName))
-            {
-                 return BadRequest(new { Message = "Role name must be provided." });
-            }
+            await _userManager.RemoveFromRolesAsync(user, roleAssignmentDto.Roles);
 
-            if (!await _roleManager.RoleExistsAsync(roleAssignmentDto.RoleName))
-            {
-                return BadRequest(new { Message = $"Role '{roleAssignmentDto.RoleName}' does not exist." });
-            }
-
-            var result = await _userManager.RemoveFromRoleAsync(user, roleAssignmentDto.RoleName);
-            if (!result.Succeeded)
-            {
-                return BadRequest(new { Message = "Failed to remove role.", Errors = result.Errors });
-            }
-
-            return Ok(new { Message = $"Role '{roleAssignmentDto.RoleName}' removed successfully." });
-        }
-
-        // Helper method to create a linked profile based on role
-        private async Task CreateUserProfile(ApplicationUser user, string role, string? firstName, string? lastName, string? email)
-        {
-            // Use null-coalescing operator to provide empty string defaults for nullable inputs
-            // to satisfy the 'required' properties of the profile models.
-            string profileFirstName = firstName ?? string.Empty;
-            string profileLastName = lastName ?? string.Empty;
-            string profileEmail = email ?? string.Empty;
-
-            switch (role)
-            {
-                case "Student":
-                    if (!await _context.Students.AnyAsync(s => s.UserId == user.Id))
-                    {
-                        _context.Students.Add(new Student
-                        {
-                            UserId = user.Id,
-                            FirstName = profileFirstName,
-                            LastName = profileLastName,
-                            Email = profileEmail,
-                            DateOfBirth = DateTime.UtcNow,
-                            Address = "N/A",
-                            PhoneNumber = "N/A"
-                        });
-                        await _context.SaveChangesAsync();
-                    }
-                    break;
-                case "Teacher":
-                    if (!await _context.Teachers.AnyAsync(t => t.UserId == user.Id))
-                    {
-                        _context.Teachers.Add(new Teacher
-                        {
-                            UserId = user.Id,
-                            FirstName = profileFirstName,
-                            LastName = profileLastName,
-                            Email = profileEmail,
-                            Department = "General",
-                            PhoneNumber = "N/A"
-                        });
-                        await _context.SaveChangesAsync();
-                    }
-                    break;
-                case "Parent":
-                    if (!await _context.Parents.AnyAsync(p => p.UserId == user.Id))
-                    {
-                        _context.Parents.Add(new Parent
-                        {
-                            UserId = user.Id,
-                            FirstName = profileFirstName,
-                            LastName = profileLastName,
-                            Email = profileEmail,
-                            Address = "N/A",
-                            PhoneNumber = "N/A"
-                        });
-                        await _context.SaveChangesAsync();
-                    }
-                    break;
-                // No profile needed for Admin role
-            }
+            return NoContent();
         }
 
         // POST: api/Users/{userId}/link-student-profile

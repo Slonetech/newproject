@@ -1,22 +1,28 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SchoolApi.Models
 {
     public class Course
     {
         [Key]
-        public int CourseId { get; set; } // Changed to CourseId from Id
-        [Required]
-        [StringLength(200)]
-        public required string Title { get; set; } // Mark as required
-        [StringLength(500)]
-        public string? Description { get; set; } // Made nullable
+        public int Id { get; set; }
 
+        [Required]
+        public string Title { get; set; } = string.Empty;
+
+        public string Description { get; set; } = string.Empty;
+
+        [Required]
         public int Credits { get; set; }
 
-        // Navigation properties for relationships
+        public int? TeacherId { get; set; }
+
+        // Navigation properties
+        [ForeignKey("TeacherId")]
+        public Teacher? Teacher { get; set; }
         public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
-        public ICollection<TeacherCourse> TeacherCourses { get; set; } = new List<TeacherCourse>();
         public ICollection<Grade> Grades { get; set; } = new List<Grade>();
         public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
     }

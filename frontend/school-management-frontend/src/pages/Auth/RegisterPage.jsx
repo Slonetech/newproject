@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { register as apiRegister } from '../../services/authService'; // Rename to avoid conflict with local function
+import { register as apiRegister } from '../../services/authService';
 
 function RegisterPage() {
     const [form, setForm] = useState({
@@ -9,10 +9,6 @@ function RegisterPage() {
         password: '',
         firstName: '',
         lastName: '',
-        // role is typically defaulted to 'Student' by the backend for public registration
-        // if your backend requires it here, ensure it's handled. Otherwise, remove.
-        // For now, assuming backend assigns 'Student' by default if not provided by public.
-        // If your backend Register endpoint expects 'role' for public, pass it: role: 'Student'
     });
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState(null);
@@ -20,7 +16,7 @@ function RegisterPage() {
     const navigate = useNavigate();
 
     const handleChange = (e) => {
-        const { id, value } = e.target; // Use id for consistency
+        const { id, value } = e.target;
         setForm((prev) => ({ ...prev, [id]: value }));
     };
 
@@ -31,15 +27,12 @@ function RegisterPage() {
 
         setIsLoading(true);
         try {
-            // Ensure the parameters match what authService.register expects:
-            // It expects an object: { username, email, password, firstName, lastName }
-            await apiRegister(form); // Pass the form object directly
-
+            await apiRegister(form);
             setSuccessMessage('Registration successful! You can now log in.');
-            setForm({ username: '', email: '', password: '', firstName: '', lastName: '' }); // Clear form
+            setForm({ username: '', email: '', password: '', firstName: '', lastName: '' });
             setTimeout(() => {
-                navigate('/login'); // Redirect to login after successful registration and a short delay
-            }, 1500); // Give user time to read success message
+                navigate('/login');
+            }, 1500);
         } catch (err) {
             console.error('Registration error:', err);
             setError(err.message || 'An unexpected error occurred during registration.');
@@ -49,84 +42,137 @@ function RegisterPage() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100 font-sans">
-            <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-                <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">Register for School Management</h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label htmlFor="firstName" className="block text-gray-700 text-sm font-medium mb-2">First Name:</label>
-                        <input
-                            type="text"
-                            id="firstName"
-                            name="firstName"
-                            value={form.firstName}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 to-sky-100 p-4">
+            <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold text-sky-700 mb-2">Create Account</h2>
+                    <p className="text-sky-600">Join our school management system</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label htmlFor="firstName" className="flex items-center text-sky-700 font-medium">
+                                <i className="fas fa-user text-sky-400 mr-2"></i>
+                                First Name
+                            </label>
+                            <input
+                                type="text"
+                                id="firstName"
+                                value={form.firstName}
+                                onChange={handleChange}
+                                required
+                                className="w-full px-4 py-2 border border-sky-200 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                                placeholder="Enter your first name"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label htmlFor="lastName" className="flex items-center text-sky-700 font-medium">
+                                <i className="fas fa-user text-sky-400 mr-2"></i>
+                                Last Name
+                            </label>
+                            <input
+                                type="text"
+                                id="lastName"
+                                value={form.lastName}
+                                onChange={handleChange}
+                                required
+                                className="w-full px-4 py-2 border border-sky-200 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                                placeholder="Enter your last name"
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <label htmlFor="lastName" className="block text-gray-700 text-sm font-medium mb-2">Last Name:</label>
-                        <input
-                            type="text"
-                            id="lastName"
-                            name="lastName"
-                            value={form.lastName}
-                            onChange={handleChange}
-                            required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="username" className="block text-gray-700 text-sm font-medium mb-2">Username:</label>
+
+                    <div className="space-y-2">
+                        <label htmlFor="username" className="flex items-center text-sky-700 font-medium">
+                            <i className="fas fa-at text-sky-400 mr-2"></i>
+                            Username
+                        </label>
                         <input
                             type="text"
                             id="username"
-                            name="username"
                             value={form.username}
                             onChange={handleChange}
                             required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-2 border border-sky-200 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                            placeholder="Choose a username"
                         />
                     </div>
 
-                    <div>
-                        <label htmlFor="email" className="block text-gray-700 text-sm font-medium mb-2">Email:</label>
+                    <div className="space-y-2">
+                        <label htmlFor="email" className="flex items-center text-sky-700 font-medium">
+                            <i className="fas fa-envelope text-sky-400 mr-2"></i>
+                            Email
+                        </label>
                         <input
                             type="email"
                             id="email"
-                            name="email"
                             value={form.email}
                             onChange={handleChange}
                             required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-2 border border-sky-200 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                            placeholder="Enter your email"
                         />
                     </div>
 
-                    <div>
-                        <label htmlFor="password" className="block text-gray-700 text-sm font-medium mb-2">Password:</label>
+                    <div className="space-y-2">
+                        <label htmlFor="password" className="flex items-center text-sky-700 font-medium">
+                            <i className="fas fa-lock text-sky-400 mr-2"></i>
+                            Password
+                        </label>
                         <input
                             type="password"
                             id="password"
-                            name="password"
                             value={form.password}
                             onChange={handleChange}
                             required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-2 border border-sky-200 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                            placeholder="Choose a password"
                         />
                     </div>
 
-                    {/* Role selection removed for public registration; backend defaults to Student */}
-                    {error && <p className="text-red-600 text-sm text-center">{error}</p>}
-                    {successMessage && <p className="text-green-600 text-sm text-center">{successMessage}</p>}
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md animate-slide-in">
+                            <i className="fas fa-exclamation-circle mr-2"></i>
+                            {error}
+                        </div>
+                    )}
 
-                    <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200">
-                        {isLoading ? 'Registering...' : 'Register'}
+                    {successMessage && (
+                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md animate-slide-in">
+                            <i className="fas fa-check-circle mr-2"></i>
+                            {successMessage}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-full bg-sky-600 text-white py-2 px-4 rounded-md hover:bg-sky-700 transition duration-200 flex items-center justify-center"
+                    >
+                        {isLoading ? (
+                            <>
+                                <i className="fas fa-spinner fa-spin mr-2"></i>
+                                Creating Account...
+                            </>
+                        ) : (
+                            <>
+                                <i className="fas fa-user-plus mr-2"></i>
+                                Create Account
+                            </>
+                        )}
                     </button>
                 </form>
-                <p className="mt-6 text-center text-gray-600">
-                    Already have an account? <Link to="/login" className="text-blue-600 hover:underline">Login here</Link>
-                </p>
+
+                <div className="mt-8 text-center">
+                    <p className="text-sky-600">
+                        Already have an account?{' '}
+                        <Link to="/login" className="text-sky-700 hover:text-sky-800 font-medium">
+                            Sign in here
+                        </Link>
+                    </p>
+                </div>
             </div>
         </div>
     );

@@ -1,29 +1,33 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SchoolApi.Models
 {
     public class Parent
     {
         [Key]
-        public int ParentId { get; set; }
+        public int Id { get; set; }
+
         [Required]
-        [StringLength(100)]
-        public required string FirstName { get; set; } // Mark as required
+        public string UserId { get; set; } = string.Empty;
+
         [Required]
-        [StringLength(100)]
-        public required string LastName { get; set; } // Mark as required
+        public string FirstName { get; set; } = string.Empty;
+
         [Required]
-        [StringLength(255)]
+        public string LastName { get; set; } = string.Empty;
+
+        [Required]
         [EmailAddress]
-        public required string Email { get; set; } // Mark as required
-        public required string PhoneNumber { get; set; } // Mark as required
-        public required string Address { get; set; } // Mark as required
+        public string Email { get; set; } = string.Empty;
 
-        // Foreign key for ApplicationUser (can be null)
-        public string? UserId { get; set; }
-        public ApplicationUser? User { get; set; } // Mark as nullable
+        [Phone]
+        public string PhoneNumber { get; set; } = string.Empty;
 
-        // Navigation property for children
-        public ICollection<Student> Children { get; set; } = new List<Student>();
+        public string Address { get; set; } = string.Empty;
+
+        // Navigation properties
+        public ApplicationUser User { get; set; } = null!;
+        public ICollection<Student> Students { get; set; } = new List<Student>();
     }
 }

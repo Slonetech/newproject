@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -6,32 +8,45 @@ namespace SchoolApi.Models
     public class Student
     {
         [Key]
-        public int StudentId { get; set; }
+        public int Id { get; set; }
+
         [Required]
-        [StringLength(100)]
-        public required string FirstName { get; set; } // Mark as required
+        public string UserId { get; set; } = null!;
+
         [Required]
-        [StringLength(100)]
-        public required string LastName { get; set; } // Mark as required
+        [StringLength(50)]
+        public string FirstName { get; set; } = null!;
+
         [Required]
-        [StringLength(255)]
+        [StringLength(50)]
+        public string LastName { get; set; } = null!;
+
+        [Required]
         [EmailAddress]
-        public required string Email { get; set; } // Mark as required
-        public DateTime DateOfBirth { get; set; }
-        public required string Address { get; set; } // Mark as required
-        public required string PhoneNumber { get; set; } // Mark as required
+        public string Email { get; set; } = string.Empty;
 
-        // Foreign key for ApplicationUser (can be null if not linked to an Identity user)
-        public string? UserId { get; set; }
-        public ApplicationUser? User { get; set; } // Mark as nullable
+        [Required]
+        [Range(1, 12)]
+        public int Grade { get; set; }
 
-        // Navigation properties for relationships
+        [StringLength(20)]
+        public string? PhoneNumber { get; set; }
+
+        [StringLength(200)]
+        public string? Address { get; set; }
+
+        public DateTime? DateOfBirth { get; set; }
+
+        public int? ParentId { get; set; }
+
+        public DateTime EnrollmentDate { get; set; }
+
+        // Navigation properties
+        public ApplicationUser User { get; set; } = null!;
+        public Parent? Parent { get; set; }
         public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
         public ICollection<Grade> Grades { get; set; } = new List<Grade>();
         public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
-
-        // Relationship with Parent (can be null if student doesn't have a parent linked yet)
-        public int? ParentId { get; set; }
-        public Parent? Parent { get; set; } // Mark as nullable
+        public List<Parent> Parents { get; set; } = new();
     }
 }

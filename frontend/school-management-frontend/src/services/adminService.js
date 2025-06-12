@@ -26,11 +26,27 @@ const adminService = {
     },
 
     // Create a new user
-    createUser: async (userData) => { // userData should match UserCreationDto: username, email, password, firstName, lastName, initialRole
+    createUser: async (userData) => {
         try {
-            const response = await axiosInstance.post(API_ADMIN_PATH, userData);
+            // Transform the data to match the backend's CreateUserDto exactly
+            const formattedData = {
+                UserName: userData.username,
+                Email: userData.email,
+                Password: userData.password,
+                FirstName: userData.firstName,
+                LastName: userData.lastName,
+                Roles: userData.initialRole ? [userData.initialRole] : []
+            };
+            
+            console.log('Sending formatted data:', formattedData); // Debug log
+            const response = await axiosInstance.post(API_ADMIN_PATH, formattedData);
             return response.data;
         } catch (error) {
+            if (error.response?.data?.errors) {
+                // If we have validation errors, format them nicely
+                const errorMessages = error.response.data.errors.map(err => err.description || err).join(', ');
+                throw new Error(errorMessages);
+            }
             console.error('Error creating user:', error.response?.data || error.message);
             throw error;
         }

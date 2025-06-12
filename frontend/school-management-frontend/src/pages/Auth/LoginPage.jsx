@@ -5,88 +5,126 @@ import { useAuth } from '../../context/AuthContext';
 function LoginPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const { login, auth, loading, error } = useAuth(); // Get auth, login, loading, error from context
+    const { login, auth, loading, error } = useAuth();
     const navigate = useNavigate();
 
-    // Effect to redirect if already logged in (e.g., user navigates back to /login when authenticated)
     useEffect(() => {
-        // Ensure auth.user exists before attempting to redirect, as auth.roles might be empty initially
         if (auth.token && auth.user && auth.roles && auth.roles.length > 0) {
             redirectBasedOnRole(auth.roles);
         }
-    }, [auth.token, auth.user, auth.roles, navigate]); // Dependencies for useEffect
+    }, [auth.token, auth.user, auth.roles, navigate]);
 
-    // Helper function to redirect based on user roles
     const redirectBasedOnRole = (roles) => {
         if (!roles || roles.length === 0) {
-            navigate('/dashboard'); // Default if no specific roles
+            navigate('/dashboard');
             return;
         }
         if (roles.includes("Admin")) {
-            navigate('/admin/users'); // Redirect Admin to user management
+            navigate('/admin/users');
         } else if (roles.includes("Teacher")) {
-            navigate('/teacher'); // Teacher dashboard
+            navigate('/teacher');
         } else if (roles.includes("Student")) {
-            navigate('/student'); // Student dashboard
+            navigate('/student');
         } else if (roles.includes("Parent")) {
-            navigate('/parent'); // Parent dashboard
+            navigate('/parent');
         } else {
-            navigate('/dashboard'); // Fallback to a general dashboard
+            navigate('/dashboard');
         }
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const success = await login(username, password); // Call login from context
+            const success = await login(username, password);
             if (success) {
-                // The auth state should be updated by now, so use auth.roles for redirection
                 redirectBasedOnRole(auth.roles);
             }
         } catch (err) {
-            // Error is already handled and set in AuthContext and displayed by the component via `error` prop
             console.error('Login form submission error:', err);
         }
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100 font-sans">
-            <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-                <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">Login to School Management</h2>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="form-group">
-                        <label htmlFor="username" className="block text-gray-700 text-sm font-medium mb-2">Username:</label>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-50 to-sky-100 p-4">
+            <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+                <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold text-sky-700 mb-2">Welcome Back</h2>
+                    <p className="text-sky-600">Sign in to your school management account</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-2">
+                        <label htmlFor="username" className="flex items-center text-sky-700 font-medium">
+                            <i className="fas fa-user text-sky-400 mr-2"></i>
+                            Username
+                        </label>
                         <input
                             type="text"
                             id="username"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-2 border border-sky-200 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                            placeholder="Enter your username"
                         />
                     </div>
 
-                    <div className="form-group">
-                        <label htmlFor="password" className="block text-gray-700 text-sm font-medium mb-2">Password:</label>
+                    <div className="space-y-2">
+                        <label htmlFor="password" className="flex items-center text-sky-700 font-medium">
+                            <i className="fas fa-lock text-sky-400 mr-2"></i>
+                            Password
+                        </label>
                         <input
                             type="password"
                             id="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
-                            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-4 py-2 border border-sky-200 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                            placeholder="Enter your password"
                         />
                     </div>
 
-                    {error && <p className="text-red-600 text-sm text-center">{error}</p>}
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md animate-slide-in">
+                            <i className="fas fa-exclamation-circle mr-2"></i>
+                            {error}
+                        </div>
+                    )}
 
-                    <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200">
-                        {loading ? 'Logging in...' : 'Login'}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-sky-600 text-white py-2 px-4 rounded-md hover:bg-sky-700 transition duration-200 flex items-center justify-center"
+                    >
+                        {loading ? (
+                            <>
+                                <i className="fas fa-spinner fa-spin mr-2"></i>
+                                Signing in...
+                            </>
+                        ) : (
+                            <>
+                                <i className="fas fa-sign-in-alt mr-2"></i>
+                                Sign In
+                            </>
+                        )}
                     </button>
                 </form>
-                <p className="mt-6 text-center text-gray-600">
-                    Don't have an account? <Link to="/register" className="text-blue-600 hover:underline">Register here</Link>
-                </p>
+
+                <div className="mt-8 text-center">
+                    <p className="text-sky-600">
+                        Don't have an account?{' '}
+                        <Link to="/register" className="text-sky-700 hover:text-sky-800 font-medium">
+                            Register here
+                        </Link>
+                    </p>
+                </div>
+
+                <div className="mt-6 text-center">
+                    <Link to="/forgot-password" className="text-sky-600 hover:text-sky-700 text-sm">
+                        Forgot your password?
+                    </Link>
+                </div>
             </div>
         </div>
     );

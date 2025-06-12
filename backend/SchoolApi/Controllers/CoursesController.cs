@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
@@ -7,6 +8,7 @@ namespace SchoolApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class CoursesController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -21,11 +23,10 @@ namespace SchoolApi.Controllers
         public async Task<ActionResult<IEnumerable<Course>>> GetCourses()
         {
             return await _context.Courses
-                                 .Include(c => c.TeacherCourses) // Include teachers assigned
-                                     .ThenInclude(tc => tc.Teacher)
-                                 .Include(c => c.StudentCourses) // Include students enrolled
-                                     .ThenInclude(sc => sc.Student)
-                                 .ToListAsync();
+                .Include(c => c.Teacher)
+                .Include(c => c.StudentCourses)
+                .ThenInclude(sc => sc.Student)
+                .ToListAsync();
         }
 
         // GET: api/Courses/5
@@ -33,11 +34,10 @@ namespace SchoolApi.Controllers
         public async Task<ActionResult<Course>> GetCourse(int id)
         {
             var course = await _context.Courses
-                                       .Include(c => c.TeacherCourses)
-                                            .ThenInclude(tc => tc.Teacher)
-                                       .Include(c => c.StudentCourses)
-                                            .ThenInclude(sc => sc.Student)
-                                       .FirstOrDefaultAsync(c => c.CourseId == id); // Corrected to CourseId
+                .Include(c => c.Teacher)
+                .Include(c => c.StudentCourses)
+                .ThenInclude(sc => sc.Student)
+                .FirstOrDefaultAsync(c => c.Id == id);
 
             if (course == null)
             {
@@ -47,11 +47,23 @@ namespace SchoolApi.Controllers
             return course;
         }
 
+        // POST: api/Courses
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<Course>> CreateCourse(Course course)
+        {
+            _context.Courses.Add(course);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetCourse), new { id = course.Id }, course);
+        }
+
         // PUT: api/Courses/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutCourse(int id, Course course)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateCourse(int id, Course course)
         {
-            if (id != course.CourseId) // Corrected to CourseId
+            if (id != course.Id)
             {
                 return BadRequest();
             }
@@ -77,18 +89,9 @@ namespace SchoolApi.Controllers
             return NoContent();
         }
 
-        // POST: api/Courses
-        [HttpPost]
-        public async Task<ActionResult<Course>> PostCourse(Course course)
-        {
-            _context.Courses.Add(course);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetCourse", new { id = course.CourseId }, course); // Corrected to CourseId
-        }
-
         // DELETE: api/Courses/5
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteCourse(int id)
         {
             var course = await _context.Courses.FindAsync(id);
@@ -105,7 +108,7 @@ namespace SchoolApi.Controllers
 
         private bool CourseExists(int id)
         {
-            return _context.Courses.Any(e => e.CourseId == id); // Corrected to CourseId
+            return _context.Courses.Any(e => e.Id == id);
         }
     }
 }

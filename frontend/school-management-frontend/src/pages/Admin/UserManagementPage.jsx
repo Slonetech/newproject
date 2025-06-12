@@ -67,6 +67,7 @@ const UserManagementPage = () => {
         setError('');
         setMessage('');
         try {
+            console.log('Creating user with data:', formData); // Debug log
             await adminService.createUser(formData); // Pass all form data for UserCreationDto
             setMessage('User created successfully!');
             setShowCreateForm(false);
@@ -75,6 +76,7 @@ const UserManagementPage = () => {
             });
             fetchUsers(); // Refresh list
         } catch (err) {
+            console.error('Error creating user:', err.response?.data); // Debug log
             setError(err.response?.data?.Message || err.message || 'Failed to create user.');
         }
     };
@@ -261,6 +263,7 @@ const UserManagementPage = () => {
                                 name="firstName"
                                 value={formData.firstName}
                                 onChange={handleChange}
+                                maxLength={50}
                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 required
                             />
@@ -272,6 +275,7 @@ const UserManagementPage = () => {
                                 name="lastName"
                                 value={formData.lastName}
                                 onChange={handleChange}
+                                maxLength={50}
                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 required
                             />
@@ -283,6 +287,7 @@ const UserManagementPage = () => {
                                 name="username"
                                 value={formData.username}
                                 onChange={handleChange}
+                                maxLength={50}
                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 required
                             />
@@ -294,6 +299,7 @@ const UserManagementPage = () => {
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
+                                maxLength={100}
                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 required
                             />
@@ -306,9 +312,12 @@ const UserManagementPage = () => {
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
+                                    minLength={6}
+                                    maxLength={100}
                                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     required={!selectedUser} // Required only for creation
                                 />
+                                <p className="text-sm text-gray-500 mt-1">Password must be at least 6 characters long</p>
                             </div>
                         )}
                         {!selectedUser && ( // Only show initial role for new user creation

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
@@ -7,6 +8,7 @@ namespace SchoolApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class StudentsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -21,11 +23,10 @@ namespace SchoolApi.Controllers
         public async Task<ActionResult<IEnumerable<Student>>> GetStudents()
         {
             return await _context.Students
-                                 .Include(s => s.User) // Include linked Identity User
-                                 .Include(s => s.Parent) // Include linked Parent
-                                 .Include(s => s.StudentCourses) // Include enrollments
-                                     .ThenInclude(sc => sc.Course) // Include course details for enrollments
-                                 .ToListAsync();
+                .Include(s => s.Parents)
+                .Include(s => s.StudentCourses)
+                .ThenInclude(sc => sc.Course)
+                .ToListAsync();
         }
 
         // GET: api/Students/5
@@ -33,11 +34,10 @@ namespace SchoolApi.Controllers
         public async Task<ActionResult<Student>> GetStudent(int id)
         {
             var student = await _context.Students
-                                        .Include(s => s.User)
-                                        .Include(s => s.Parent)
-                                        .Include(s => s.StudentCourses)
-                                            .ThenInclude(sc => sc.Course)
-                                        .FirstOrDefaultAsync(s => s.StudentId == id); // Corrected to StudentId
+                .Include(s => s.Parents)
+                .Include(s => s.StudentCourses)
+                .ThenInclude(sc => sc.Course)
+                .FirstOrDefaultAsync(s => s.Id == id);
 
             if (student == null)
             {
@@ -50,9 +50,10 @@ namespace SchoolApi.Controllers
         // PUT: api/Students/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutStudent(int id, Student student)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateStudent(int id, Student student)
         {
-            if (id != student.StudentId) // Corrected to StudentId
+            if (id != student.Id)
             {
                 return BadRequest();
             }
@@ -81,16 +82,18 @@ namespace SchoolApi.Controllers
         // POST: api/Students
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Student>> PostStudent(Student student)
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<Student>> CreateStudent(Student student)
         {
             _context.Students.Add(student);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetStudent", new { id = student.StudentId }, student); // Corrected to StudentId
+            return CreatedAtAction(nameof(GetStudent), new { id = student.Id }, student);
         }
 
         // DELETE: api/Students/5
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteStudent(int id)
         {
             var student = await _context.Students.FindAsync(id);
@@ -105,9 +108,59 @@ namespace SchoolApi.Controllers
             return NoContent();
         }
 
+        [HttpPost("{id}/parents/{parentId}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AddParent(int id, int parentId)
+        {
+            var student = await _context.Students
+                .Include(s => s.Parents)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (student == null)
+            {
+                return NotFound("Student not found");
+            }
+
+            var parent = await _context.Parents.FindAsync(parentId);
+            if (parent == null)
+            {
+                return NotFound("Parent not found");
+            }
+
+            student.Parents.Add(parent);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id}/parents/{parentId}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> RemoveParent(int id, int parentId)
+        {
+            var student = await _context.Students
+                .Include(s => s.Parents)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (student == null)
+            {
+                return NotFound("Student not found");
+            }
+
+            var parent = student.Parents.FirstOrDefault(p => p.Id == parentId);
+            if (parent == null)
+            {
+                return NotFound("Parent not found");
+            }
+
+            student.Parents.Remove(parent);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
         private bool StudentExists(int id)
         {
-            return _context.Students.Any(e => e.StudentId == id); // Corrected to StudentId
+            return _context.Students.Any(e => e.Id == id);
         }
     }
 }
