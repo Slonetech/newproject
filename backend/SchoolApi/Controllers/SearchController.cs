@@ -54,7 +54,7 @@ namespace SchoolApi.Controllers
 
             if (!string.IsNullOrWhiteSpace(course))
             {
-                students = students.Where(s => s.StudentCourses.Any(sc => sc.Course.Title.Contains(course)));
+                students = students.Where(s => s.StudentCourses.Any(sc => sc.Course.Name.Contains(course)));
             }
 
             if (!string.IsNullOrWhiteSpace(teacher))
@@ -91,7 +91,7 @@ namespace SchoolApi.Controllers
                 Courses = s.StudentCourses.Select(sc => new CourseInfo
                 {
                     Id = sc.Course.Id,
-                    Title = sc.Course.Title,
+                    Title = sc.Course.Name,
                     TeacherName = sc.Course.Teacher != null
                         ? $"{sc.Course.Teacher.FirstName} {sc.Course.Teacher.LastName}"
                         : "Unassigned"
@@ -124,7 +124,7 @@ namespace SchoolApi.Controllers
             if (!string.IsNullOrWhiteSpace(query))
             {
                 courses = courses.Where(c =>
-                    c.Title.Contains(query) ||
+                    c.Name.Contains(query) ||
                     c.Description.Contains(query));
             }
 
@@ -146,8 +146,8 @@ namespace SchoolApi.Controllers
                 courses = sortBy.ToLower() switch
                 {
                     "title" => sortOrder?.ToLower() == "desc"
-                        ? courses.OrderByDescending(c => c.Title)
-                        : courses.OrderBy(c => c.Title),
+                        ? courses.OrderByDescending(c => c.Name)
+                        : courses.OrderBy(c => c.Name),
                     "teacher" => sortOrder?.ToLower() == "desc"
                         ? courses.OrderByDescending(c => c.Teacher != null ? c.Teacher.LastName : string.Empty)
                         : courses.OrderBy(c => c.Teacher != null ? c.Teacher.LastName : string.Empty),
@@ -161,7 +161,7 @@ namespace SchoolApi.Controllers
             var results = await courses.Select(c => new CourseSearchResult
             {
                 Id = c.Id,
-                Title = c.Title,
+                Title = c.Name,
                 Description = c.Description,
                 TeacherName = c.Teacher != null
                     ? $"{c.Teacher.FirstName} {c.Teacher.LastName}"

@@ -1,6 +1,6 @@
 import axiosInstance from '../api/axiosConfig'; // Use the configured axios instance
 
-const API_ADMIN_PATH = '/Users/'; // Corresponds to SchoolApi/Controllers/UsersController.cs
+const API_ADMIN_PATH = '/api/Users'; // Add /api prefix
 
 const adminService = {
     // Get all users
@@ -17,7 +17,7 @@ const adminService = {
     // Get user by ID
     getUserById: async (userId) => {
         try {
-            const response = await axiosInstance.get(`${API_ADMIN_PATH}${userId}`);
+            const response = await axiosInstance.get(`${API_ADMIN_PATH}/${userId}`);
             return response.data;
         } catch (error) {
             console.error(`Error fetching user ${userId}:`, error.response?.data || error.message);
@@ -55,7 +55,7 @@ const adminService = {
     // Update an existing user
     updateUser: async (userId, userData) => { // userData should match UserUpdateDto: username, email, firstName, lastName
         try {
-            const response = await axiosInstance.put(`${API_ADMIN_PATH}${userId}`, userData);
+            const response = await axiosInstance.put(`${API_ADMIN_PATH}/${userId}`, userData);
             return response.data; // Usually returns 204 No Content for PUT
         } catch (error) {
             console.error(`Error updating user ${userId}:`, error.response?.data || error.message);
@@ -66,7 +66,7 @@ const adminService = {
     // Delete a user
     deleteUser: async (userId) => {
         try {
-            const response = await axiosInstance.delete(`${API_ADMIN_PATH}${userId}`);
+            const response = await axiosInstance.delete(`${API_ADMIN_PATH}/${userId}`);
             return response.data; // Usually returns 204 No Content for DELETE
         } catch (error) {
             console.error(`Error deleting user ${userId}:`, error.response?.data || error.message);
@@ -77,7 +77,7 @@ const adminService = {
     // Assign a role to a user
     assignRole: async (userId, roleName) => { // roleName is just a string
         try {
-            const response = await axiosInstance.post(`${API_ADMIN_PATH}${userId}/assign-role`, { roleName });
+            const response = await axiosInstance.post(`${API_ADMIN_PATH}/${userId}/roles`, { roles: [roleName] });
             return response.data;
         } catch (error) {
             console.error(`Error assigning role '${roleName}' to user ${userId}:`, error.response?.data || error.message);
@@ -88,7 +88,7 @@ const adminService = {
     // Remove a role from a user
     removeRole: async (userId, roleName) => { // roleName is just a string
         try {
-            const response = await axiosInstance.post(`${API_ADMIN_PATH}${userId}/remove-role`, { roleName });
+            const response = await axiosInstance.delete(`${API_ADMIN_PATH}/${userId}/roles`, { data: { roles: [roleName] } });
             return response.data;
         } catch (error) {
             console.error(`Error removing role '${roleName}' from user ${userId}:`, error.response?.data || error.message);
@@ -106,7 +106,7 @@ const adminService = {
     // Link a user to a student profile (example, others can be added)
     linkStudentProfile: async (userId) => {
         try {
-            const response = await axiosInstance.post(`${API_ADMIN_PATH}${userId}/link-student-profile`);
+            const response = await axiosInstance.post(`${API_ADMIN_PATH}/${userId}/link-student-profile`);
             return response.data;
         } catch (error) {
             console.error(`Error linking student profile for user ${userId}:`, error.response?.data || error.message);

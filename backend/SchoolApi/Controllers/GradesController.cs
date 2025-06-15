@@ -33,7 +33,7 @@ namespace SchoolApi.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Grade>> GetGrade(int id)
+        public async Task<ActionResult<Grade>> GetGrade(Guid id)
         {
             var grade = await _context.Grades
                 .Include(g => g.Student)
@@ -49,7 +49,7 @@ namespace SchoolApi.Controllers
         }
 
         [HttpGet("student/{studentId}")]
-        public async Task<ActionResult<IEnumerable<Grade>>> GetStudentGrades(int studentId)
+        public async Task<ActionResult<IEnumerable<Grade>>> GetStudentGrades(Guid studentId)
         {
             return await _context.Grades
                 .Include(g => g.Course)
@@ -58,7 +58,7 @@ namespace SchoolApi.Controllers
         }
 
         [HttpGet("course/{courseId}")]
-        public async Task<ActionResult<IEnumerable<Grade>>> GetCourseGrades(int courseId)
+        public async Task<ActionResult<IEnumerable<Grade>>> GetCourseGrades(Guid courseId)
         {
             return await _context.Grades
                 .Include(g => g.Student)
@@ -97,7 +97,7 @@ namespace SchoolApi.Controllers
                         parent.Email,
                         student.FirstName,
                         student.LastName,
-                        course.Title,
+                        course.Name,
                         grade.Value,
                         grade.Date
                     );
@@ -113,7 +113,7 @@ namespace SchoolApi.Controllers
 
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,Teacher")]
-        public async Task<IActionResult> UpdateGrade(int id, Grade grade)
+        public async Task<IActionResult> UpdateGrade(Guid id, Grade grade)
         {
             if (id != grade.Id)
             {
@@ -146,7 +146,7 @@ namespace SchoolApi.Controllers
                             parent.Email,
                             existingGrade.Student.FirstName,
                             existingGrade.Student.LastName,
-                            existingGrade.Course.Title,
+                            existingGrade.Course.Name,
                             grade.Value,
                             grade.Date
                         );
@@ -174,7 +174,7 @@ namespace SchoolApi.Controllers
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteGrade(int id)
+        public async Task<IActionResult> DeleteGrade(Guid id)
         {
             var grade = await _context.Grades.FindAsync(id);
             if (grade == null)
@@ -188,7 +188,7 @@ namespace SchoolApi.Controllers
             return NoContent();
         }
 
-        private bool GradeExists(int id)
+        private bool GradeExists(Guid id)
         {
             return _context.Grades.Any(e => e.Id == id);
         }

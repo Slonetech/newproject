@@ -8,18 +8,18 @@ namespace SchoolApi.Models
     public class Student
     {
         [Key]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
-        public string UserId { get; set; } = null!;
-
-        [Required]
-        [StringLength(50)]
-        public string FirstName { get; set; } = null!;
+        public string UserId { get; set; } = string.Empty;
 
         [Required]
         [StringLength(50)]
-        public string LastName { get; set; } = null!;
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(50)]
+        public string LastName { get; set; } = string.Empty;
 
         [Required]
         [EmailAddress]
@@ -37,12 +37,12 @@ namespace SchoolApi.Models
 
         public DateTime? DateOfBirth { get; set; }
 
-        public int? ParentId { get; set; }
+        public Guid? ParentId { get; set; }
 
-        public DateTime EnrollmentDate { get; set; }
+        public DateTime EnrollmentDate { get; set; } = DateTime.UtcNow;
 
         // Navigation properties
-        public ApplicationUser User { get; set; } = null!;
+        public ApplicationUser? User { get; set; }
         public Parent? Parent { get; set; }
         public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
         public ICollection<Grade> Grades { get; set; } = new List<Grade>();

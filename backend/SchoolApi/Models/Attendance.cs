@@ -6,16 +6,16 @@ namespace SchoolApi.Models
     public class Attendance
     {
         [Key]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
-        public int StudentId { get; set; }
+        public Guid StudentId { get; set; }
 
         [Required]
-        public int CourseId { get; set; }
+        public Guid CourseId { get; set; }
 
         [Required]
-        public DateTime Date { get; set; }
+        public DateTime Date { get; set; } = DateTime.UtcNow;
 
         [Required]
         public bool IsPresent { get; set; }
@@ -25,9 +25,9 @@ namespace SchoolApi.Models
 
         // Navigation properties
         [ForeignKey("StudentId")]
-        public Student Student { get; set; } = null!;
+        public Student? Student { get; set; }
 
         [ForeignKey("CourseId")]
-        public Course Course { get; set; } = null!;
+        public Course? Course { get; set; }
     }
 }

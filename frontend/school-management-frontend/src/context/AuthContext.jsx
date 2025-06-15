@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { jwtDecode } from 'jwt-decode'; // Make sure you have 'jwt-decode' installed (npm install jwt-decode)
 import { useNavigate } from 'react-router-dom'; // Import useNavigate
-import { login as apiLogin, logout as apiLogout } from '../services/authService'; // Correct imports
+import { login as apiLogin, logout as apiLogout, getUser } from '../services/authService'; // Correct imports
 
 const AuthContext = createContext(null);
 
@@ -10,39 +10,30 @@ export const AuthProvider = ({ children }) => {
     const [auth, setAuth] = useState(() => {
         try {
             const storedToken = localStorage.getItem('authToken');
-            const storedUsername = localStorage.getItem('userUsername');
-            const storedEmail = localStorage.getItem('userEmail');
-            const storedRoles = localStorage.getItem('userRoles');
-            const storedExpiration = localStorage.getItem('tokenExpiration');
+            const storedUser = localStorage.getItem('user');
 
-            if (storedToken && storedUsername && storedEmail && storedRoles && storedExpiration) {
-                const expiresAt = new Date(storedExpiration);
+            if (storedToken && storedUser) {
+                const user = JSON.parse(storedUser);
+                const decodedToken = jwtDecode(storedToken);
+                const expiresAt = new Date(decodedToken.exp * 1000); // Convert Unix timestamp to Date
                 const now = Date.now();
 
                 // Check if token is expired
                 if (expiresAt.getTime() > now) {
-                    const decodedToken = jwtDecode(storedToken); // Decode token to get user ID
                     return {
                         token: storedToken,
-                        user: {
-                            id: decodedToken.nameid || decodedToken.sub, // 'nameid' or 'sub' are common claims for user ID
-                            username: storedUsername,
-                            email: storedEmail,
-                            roles: JSON.parse(storedRoles),
-                        },
-                        roles: JSON.parse(storedRoles), // Keep roles at top level for easier access
-                        expiration: storedExpiration
+                        user: user
                     };
                 } else {
                     console.warn('Authentication token expired on initial load. Clearing storage.');
-                    apiLogout(); // Clear storage using apiLogout
+                    apiLogout();
                 }
             }
         } catch (err) {
             console.error('Error loading auth state from localStorage:', err);
-            apiLogout(); // Clear potentially corrupted storage using apiLogout
+            apiLogout();
         }
-        return { token: null, user: null, roles: [], expiration: null }; // Default unauthenticated state
+        return { token: null, user: null };
     });
 
     const [loading, setLoading] = useState(false); // Only used during login/logout ops
@@ -53,7 +44,7 @@ export const AuthProvider = ({ children }) => {
     // Use useCallback for memoized functions to prevent unnecessary re-renders
     const handleLogout = useCallback(() => {
         apiLogout(); // Call authService logout to clear storage
-        setAuth({ token: null, user: null, roles: [], expiration: null }); // Clear state
+        setAuth({ token: null, user: null }); // Clear state
         setError(null); // Clear any errors
         navigate('/login'); // Redirect to login page
     }, [navigate]);
@@ -61,18 +52,20 @@ export const AuthProvider = ({ children }) => {
     // Effect to continuously check token expiration
     useEffect(() => {
         const checkTokenValidity = () => {
-            if (auth.token && auth.expiration) {
-                const now = new Date();
-                const expiresAt = new Date(auth.expiration);
+            if (auth.token) {
+                try {
+                    const decodedToken = jwtDecode(auth.token);
+                    const expiresAt = new Date(decodedToken.exp * 1000);
+                    const now = new Date();
 
-                if (now > expiresAt) {
-                    console.warn("Authentication token expired. Logging out.");
-                    handleLogout(); // Use the internal handleLogout
+                    if (now > expiresAt) {
+                        console.warn("Authentication token expired. Logging out.");
+                        handleLogout(); // Use the internal handleLogout
+                    }
+                } catch (err) {
+                    console.warn("Invalid token. Logging out.");
+                    handleLogout();
                 }
-            } else if (auth.token) {
-                // Scenario where auth state has token but localStorage somehow lost it
-                console.warn("Auth state has token, but localStorage doesn't. Logging out.");
-                handleLogout();
             }
         };
 
@@ -81,44 +74,24 @@ export const AuthProvider = ({ children }) => {
 
         // Cleanup function
         return () => clearInterval(intervalId);
-    }, [auth.token, auth.expiration, handleLogout]); // Depend on relevant auth state and handleLogout
+    }, [auth.token, handleLogout]); // Depend on relevant auth state and handleLogout
 
 
-    const handleLogin = useCallback(async (username, password) => {
+    const handleLogin = useCallback(async (email, password) => {
         setLoading(true);
         setError(null);
         try {
-            const data = await apiLogin(username, password); // Call authService login
-
-            // Decode token to get user ID if needed, and expiration
-            const decodedToken = jwtDecode(data.token);
-            const userId = decodedToken.nameid || decodedToken.sub; // Standard claims for user ID
-
-            // Store token and user details in localStorage using explicit keys
-            localStorage.setItem('authToken', data.token);
-            localStorage.setItem('userUsername', data.username);
-            localStorage.setItem('userEmail', data.email);
-            localStorage.setItem('userRoles', JSON.stringify(data.roles));
-            localStorage.setItem('tokenExpiration', data.expiration); // Store the expiration date string
-
-            // Update state with full user data
+            const data = await apiLogin(email, password);
             setAuth({
                 token: data.token,
-                user: {
-                    id: userId,
-                    username: data.username,
-                    email: data.email,
-                    roles: data.roles,
-                },
-                roles: data.roles, // Also keep roles at top level for convenience
-                expiration: data.expiration
+                user: data.user
             });
-            return true; // Indicate success for LoginPage to handle navigation
+            return true;
         } catch (err) {
-            const errorMessage = err.response?.data?.Message || err.message || 'Login failed. Please try again.';
+            const errorMessage = err.message || 'Login failed. Please try again.';
             setError(errorMessage);
             console.error('AuthContext Login error:', err);
-            throw new Error(errorMessage); // Re-throw for component to handle
+            throw err;
         } finally {
             setLoading(false);
         }
@@ -186,7 +159,7 @@ export const ProtectedRoute = ({ children, allowedRoles }) => {
 
     // If roles are specified, check if user has any of the allowed roles
     if (allowedRoles && allowedRoles.length > 0) {
-        const userHasRequiredRole = allowedRoles.some(role => auth.roles.includes(role));
+        const userHasRequiredRole = allowedRoles.some(role => auth.user.roles.includes(role));
         if (!userHasRequiredRole) {
             // If authenticated but no required role, redirect to unauthorized page
             useEffect(() => {

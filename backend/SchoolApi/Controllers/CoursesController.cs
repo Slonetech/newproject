@@ -31,7 +31,7 @@ namespace SchoolApi.Controllers
 
         // GET: api/Courses/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Course>> GetCourse(int id)
+        public async Task<ActionResult<Course>> GetCourse(Guid id)
         {
             var course = await _context.Courses
                 .Include(c => c.Teacher)
@@ -61,7 +61,7 @@ namespace SchoolApi.Controllers
         // PUT: api/Courses/5
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateCourse(int id, Course course)
+        public async Task<IActionResult> UpdateCourse(Guid id, Course course)
         {
             if (id != course.Id)
             {
@@ -92,7 +92,7 @@ namespace SchoolApi.Controllers
         // DELETE: api/Courses/5
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteCourse(int id)
+        public async Task<IActionResult> DeleteCourse(Guid id)
         {
             var course = await _context.Courses.FindAsync(id);
             if (course == null)
@@ -106,7 +106,7 @@ namespace SchoolApi.Controllers
             return NoContent();
         }
 
-        private bool CourseExists(int id)
+        private bool CourseExists(Guid id)
         {
             return _context.Courses.Any(e => e.Id == id);
         }

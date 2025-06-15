@@ -7,29 +7,29 @@ namespace SchoolApi.Models
     public class Grade
     {
         [Key]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
-        public int StudentId { get; set; }
+        public Guid StudentId { get; set; }
 
         [Required]
-        public int CourseId { get; set; }
+        public Guid CourseId { get; set; }
 
         [Required]
         [Range(0, 100)]
         public double Value { get; set; }
 
         [Required]
-        public DateTime Date { get; set; }
+        public DateTime Date { get; set; } = DateTime.UtcNow;
 
         [StringLength(500)]
         public string? Comments { get; set; }
 
         // Navigation properties
         [ForeignKey("StudentId")]
-        public Student Student { get; set; } = null!;
+        public Student? Student { get; set; }
 
         [ForeignKey("CourseId")]
-        public Course Course { get; set; } = null!;
+        public Course? Course { get; set; }
     }
 }

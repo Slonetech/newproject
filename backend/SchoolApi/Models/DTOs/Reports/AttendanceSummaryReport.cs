@@ -13,7 +13,7 @@ namespace SchoolApi.Models.DTOs.Reports
 
     public class CourseAttendance
     {
-        public int CourseId { get; set; }
+        public Guid CourseId { get; set; }
         public string CourseName { get; set; } = string.Empty;
         public int TotalStudents { get; set; }
         public int PresentCount { get; set; }

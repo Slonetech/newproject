@@ -1,10 +1,11 @@
+using System;
 using System.Collections.Generic;
 
 namespace SchoolApi.Models.DTOs.Reports
 {
     public class CourseSummaryReport
     {
-        public int CourseId { get; set; }
+        public Guid CourseId { get; set; }
         public string CourseName { get; set; } = string.Empty;
         public int TotalStudents { get; set; }
         public double AverageGrade { get; set; }

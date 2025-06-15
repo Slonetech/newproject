@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -7,23 +8,42 @@ namespace SchoolApi.Models
     public class Course
     {
         [Key]
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required]
-        public string Title { get; set; } = string.Empty;
+        [StringLength(100)]
+        public string Name { get; set; } = string.Empty;
 
+        [Required]
+        [StringLength(10)]
+        public string Code { get; set; } = string.Empty;
+
+        [StringLength(500)]
         public string Description { get; set; } = string.Empty;
 
-        [Required]
         public int Credits { get; set; }
 
-        public int? TeacherId { get; set; }
+        public Guid? TeacherId { get; set; }
 
-        // Navigation properties
         [ForeignKey("TeacherId")]
         public Teacher? Teacher { get; set; }
-        public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
-        public ICollection<Grade> Grades { get; set; } = new List<Grade>();
-        public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
+
+        public bool IsActive { get; set; } = true;
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime? UpdatedAt { get; set; }
+
+        // Navigation properties
+        public virtual ICollection<StudentCourse> StudentCourses { get; set; }
+        public virtual ICollection<Grade> Grades { get; set; }
+        public virtual ICollection<Attendance> Attendances { get; set; }
+
+        public Course()
+        {
+            StudentCourses = new HashSet<StudentCourse>();
+            Grades = new HashSet<Grade>();
+            Attendances = new HashSet<Attendance>();
+        }
     }
 }

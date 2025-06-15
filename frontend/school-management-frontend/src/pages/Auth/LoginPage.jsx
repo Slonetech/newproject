@@ -3,16 +3,16 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 function LoginPage() {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const { login, auth, loading, error } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (auth.token && auth.user && auth.roles && auth.roles.length > 0) {
-            redirectBasedOnRole(auth.roles);
+        if (auth.token && auth.user) {
+            redirectBasedOnRole(auth.user.roles);
         }
-    }, [auth.token, auth.user, auth.roles, navigate]);
+    }, [auth.token, auth.user, navigate]);
 
     const redirectBasedOnRole = (roles) => {
         if (!roles || roles.length === 0) {
@@ -35,9 +35,9 @@ function LoginPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const success = await login(username, password);
-            if (success) {
-                redirectBasedOnRole(auth.roles);
+            const success = await login(email, password);
+            if (success && auth.user && auth.user.roles) {
+                redirectBasedOnRole(auth.user.roles);
             }
         } catch (err) {
             console.error('Login form submission error:', err);
@@ -54,18 +54,18 @@ function LoginPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                        <label htmlFor="username" className="flex items-center text-sky-700 font-medium">
-                            <i className="fas fa-user text-sky-400 mr-2"></i>
-                            Username
+                        <label htmlFor="email" className="flex items-center text-sky-700 font-medium">
+                            <i className="fas fa-envelope text-sky-400 mr-2"></i>
+                            Email
                         </label>
                         <input
-                            type="text"
-                            id="username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            type="email"
+                            id="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             required
                             className="w-full px-4 py-2 border border-sky-200 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
-                            placeholder="Enter your username"
+                            placeholder="Enter your email"
                         />
                     </div>
 

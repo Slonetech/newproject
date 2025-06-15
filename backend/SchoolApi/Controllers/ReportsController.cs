@@ -20,7 +20,7 @@ namespace SchoolApi.Controllers
         }
 
         [HttpGet("student/{id}")]
-        public async Task<ActionResult<StudentProgressReport>> GetStudentProgress(int id)
+        public async Task<ActionResult<StudentProgressReport>> GetStudentProgress(Guid id)
         {
             var student = await _context.Students
                 .Include(s => s.Grades)
@@ -41,7 +41,7 @@ namespace SchoolApi.Controllers
                     .Select(g => new CourseProgress
                     {
                         CourseId = g.Key.Id,
-                        CourseName = g.Key.Title,
+                        CourseName = g.Key.Name,
                         AverageGrade = g.Average(grade => grade.Value),
                         LastGrade = g.OrderByDescending(grade => grade.Date).First().Value,
                         LastGradeDate = g.OrderByDescending(grade => grade.Date).First().Date
@@ -53,7 +53,7 @@ namespace SchoolApi.Controllers
         }
 
         [HttpGet("parent/{id}")]
-        public async Task<ActionResult<IEnumerable<StudentProgressReport>>> GetParentReport(int id)
+        public async Task<ActionResult<IEnumerable<StudentProgressReport>>> GetParentReport(Guid id)
         {
             var parent = await _context.Parents
                 .Include(p => p.Students)
@@ -75,7 +75,7 @@ namespace SchoolApi.Controllers
                     .Select(g => new CourseProgress
                     {
                         CourseId = g.Key.Id,
-                        CourseName = g.Key.Title,
+                        CourseName = g.Key.Name,
                         AverageGrade = g.Average(grade => grade.Value),
                         LastGrade = g.OrderByDescending(grade => grade.Date).First().Value,
                         LastGradeDate = g.OrderByDescending(grade => grade.Date).First().Date
@@ -87,7 +87,7 @@ namespace SchoolApi.Controllers
         }
 
         [HttpGet("course/{id}")]
-        public async Task<ActionResult<CourseSummaryReport>> GetCourseSummary(int id)
+        public async Task<ActionResult<CourseSummaryReport>> GetCourseSummary(Guid id)
         {
             var course = await _context.Courses
                 .Include(c => c.Grades)
@@ -102,7 +102,7 @@ namespace SchoolApi.Controllers
             var report = new CourseSummaryReport
             {
                 CourseId = course.Id,
-                CourseName = course.Title,
+                CourseName = course.Name,
                 TotalStudents = grades.Count,
                 AverageGrade = grades.Any() ? grades.Average() : 0,
                 HighestGrade = grades.Any() ? grades.Max() : 0,
@@ -141,7 +141,7 @@ namespace SchoolApi.Controllers
                     .Select(g => new CourseAttendance
                     {
                         CourseId = g.Key.Id,
-                        CourseName = g.Key.Title,
+                        CourseName = g.Key.Name,
                         TotalStudents = g.Select(a => a.StudentId).Distinct().Count(),
                         PresentCount = g.Count(a => a.IsPresent),
                         AbsentCount = g.Count(a => !a.IsPresent),

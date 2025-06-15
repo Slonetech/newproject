@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
 using SchoolApi.Models;
 using SchoolApi.Models.DTOs.Users;
+using Microsoft.Extensions.Logging;
 
 namespace SchoolApi.Controllers
 {
@@ -20,14 +21,17 @@ namespace SchoolApi.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ApplicationDbContext _context; // To manage Student/Teacher/Parent profiles
+        private readonly ILogger<UsersController> _logger;
 
         public UsersController(UserManager<ApplicationUser> userManager,
                                RoleManager<IdentityRole> roleManager,
-                               ApplicationDbContext context)
+                               ApplicationDbContext context,
+                               ILogger<UsersController> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _context = context;
+            _logger = logger;
         }
 
         // GET: api/Users
@@ -102,7 +106,11 @@ namespace SchoolApi.Controllers
             {
                 if (!ModelState.IsValid)
                 {
-                    return BadRequest(ModelState);
+                    var errors = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .ToList();
+                    return BadRequest(new { Message = "Validation failed", Errors = errors });
                 }
 
                 // Check if username already exists
@@ -119,6 +127,12 @@ namespace SchoolApi.Controllers
                     return BadRequest(new { Message = "Email already registered." });
                 }
 
+                // Validate password
+                if (string.IsNullOrEmpty(createUserDto.Password))
+                {
+                    return BadRequest(new { Message = "Password is required." });
+                }
+
                 var user = new ApplicationUser
                 {
                     UserName = createUserDto.UserName,
@@ -130,7 +144,8 @@ namespace SchoolApi.Controllers
                 var result = await _userManager.CreateAsync(user, createUserDto.Password);
                 if (!result.Succeeded)
                 {
-                    return BadRequest(new { Message = "User creation failed.", Errors = result.Errors });
+                    var errors = result.Errors.Select(e => e.Description).ToList();
+                    return BadRequest(new { Message = "User creation failed.", Errors = errors });
                 }
 
                 // Assign roles
@@ -142,6 +157,20 @@ namespace SchoolApi.Controllers
                         {
                             await _userManager.AddToRoleAsync(user, role);
                         }
+                        else
+                        {
+                            // If role doesn't exist, remove the user and return error
+                            await _userManager.DeleteAsync(user);
+                            return BadRequest(new { Message = $"Role '{role}' does not exist." });
+                        }
+                    }
+                }
+                else
+                {
+                    // If no roles specified, assign default role
+                    if (await _roleManager.RoleExistsAsync("Student"))
+                    {
+                        await _userManager.AddToRoleAsync(user, "Student");
                     }
                 }
 
@@ -201,23 +230,111 @@ namespace SchoolApi.Controllers
         }
 
         // DELETE: api/Users/{id}
-        // Delete a user
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(string id)
         {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null)
+            try
             {
-                return NotFound();
-            }
+                var user = await _userManager.FindByIdAsync(id);
+                if (user == null)
+                {
+                    return NotFound(new { message = "User not found" });
+                }
 
-            var result = await _userManager.DeleteAsync(user);
-            if (!result.Succeeded)
+                // Get user's roles
+                var roles = await _userManager.GetRolesAsync(user);
+
+                // Remove user from all roles first
+                await _userManager.RemoveFromRolesAsync(user, roles);
+
+                // Handle related records based on roles
+                if (roles.Contains("Teacher"))
+                {
+                    var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == id);
+                    if (teacher != null)
+                    {
+                        // Update all courses to remove the teacher reference
+                        var courses = await _context.Courses
+                            .Where(c => c.TeacherId == teacher.Id)
+                            .ToListAsync();
+
+                        foreach (var course in courses)
+                        {
+                            course.TeacherId = null;
+                        }
+                        await _context.SaveChangesAsync();
+
+                        // Now delete the teacher record
+                        _context.Teachers.Remove(teacher);
+                    }
+                }
+                else if (roles.Contains("Student"))
+                {
+                    var student = await _context.Students.FirstOrDefaultAsync(s => s.UserId == id);
+                    if (student != null)
+                    {
+                        // Remove student from all courses
+                        var studentCourses = await _context.StudentCourses
+                            .Where(sc => sc.StudentId == student.Id)
+                            .ToListAsync();
+                        _context.StudentCourses.RemoveRange(studentCourses);
+
+                        // Remove student's grades
+                        var grades = await _context.Grades
+                            .Where(g => g.StudentId == student.Id)
+                            .ToListAsync();
+                        _context.Grades.RemoveRange(grades);
+
+                        // Remove student's attendance records
+                        var attendances = await _context.Attendances
+                            .Where(a => a.StudentId == student.Id)
+                            .ToListAsync();
+                        _context.Attendances.RemoveRange(attendances);
+
+                        await _context.SaveChangesAsync();
+
+                        // Now delete the student record
+                        _context.Students.Remove(student);
+                    }
+                }
+                else if (roles.Contains("Parent"))
+                {
+                    var parent = await _context.Parents.FirstOrDefaultAsync(p => p.UserId == id);
+                    if (parent != null)
+                    {
+                        // Update all students to remove the parent reference
+                        var students = await _context.Students
+                            .Where(s => s.ParentId == parent.Id)
+                            .ToListAsync();
+
+                        foreach (var student in students)
+                        {
+                            student.ParentId = null;
+                        }
+                        await _context.SaveChangesAsync();
+
+                        // Now delete the parent record
+                        _context.Parents.Remove(parent);
+                    }
+                }
+
+                // Save changes for related records
+                await _context.SaveChangesAsync();
+
+                // Finally delete the user
+                var result = await _userManager.DeleteAsync(user);
+                if (!result.Succeeded)
+                {
+                    return BadRequest(new { message = "Failed to delete user", errors = result.Errors });
+                }
+
+                return Ok(new { message = "User deleted successfully" });
+            }
+            catch (Exception ex)
             {
-                return BadRequest(result.Errors);
+                _logger.LogError(ex, "Error deleting user {UserId}", id);
+                return StatusCode(500, new { message = "An error occurred while deleting the user", error = ex.Message });
             }
-
-            return NoContent();
         }
 
         // POST: api/Users/{id}/roles
@@ -269,20 +386,17 @@ namespace SchoolApi.Controllers
                 return Conflict(new { Message = "User already linked to a student profile." });
             }
 
-            // Ensure basic info for the profile from the user
-            string profileFirstName = user.FirstName ?? string.Empty;
-            string profileLastName = user.LastName ?? string.Empty;
-            string profileEmail = user.Email ?? string.Empty;
-
             var student = new Student
             {
+                Id = Guid.NewGuid(),
                 UserId = userId,
-                FirstName = profileFirstName,
-                LastName = profileLastName,
-                Email = profileEmail,
+                FirstName = user.FirstName ?? string.Empty,
+                LastName = user.LastName ?? string.Empty,
+                Email = user.Email ?? string.Empty,
                 DateOfBirth = DateTime.UtcNow,
                 Address = "N/A",
-                PhoneNumber = "N/A"
+                PhoneNumber = "N/A",
+                EnrollmentDate = DateTime.UtcNow
             };
             _context.Students.Add(student);
             await _context.SaveChangesAsync();

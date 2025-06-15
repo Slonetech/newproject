@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
 using SchoolApi.Models;
+using System;
 
 namespace SchoolApi.Controllers
 {
@@ -30,7 +31,7 @@ namespace SchoolApi.Controllers
 
         // GET: api/Parents/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Parent>> GetParent(int id)
+        public async Task<ActionResult<Parent>> GetParent(Guid id)
         {
             var parent = await _context.Parents
                 .Include(p => p.User)
@@ -50,6 +51,7 @@ namespace SchoolApi.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Parent>> CreateParent(Parent parent)
         {
+            parent.Id = Guid.NewGuid();
             _context.Parents.Add(parent);
             await _context.SaveChangesAsync();
 
@@ -59,7 +61,7 @@ namespace SchoolApi.Controllers
         // PUT: api/Parents/5
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateParent(int id, Parent parent)
+        public async Task<IActionResult> UpdateParent(Guid id, Parent parent)
         {
             if (id != parent.Id)
             {
@@ -90,7 +92,7 @@ namespace SchoolApi.Controllers
         // DELETE: api/Parents/5
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteParent(int id)
+        public async Task<IActionResult> DeleteParent(Guid id)
         {
             var parent = await _context.Parents.FindAsync(id);
             if (parent == null)
@@ -106,7 +108,7 @@ namespace SchoolApi.Controllers
 
         [HttpPost("{id}/students/{studentId}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> AddStudent(int id, int studentId)
+        public async Task<IActionResult> AddStudent(Guid id, Guid studentId)
         {
             var parent = await _context.Parents
                 .Include(p => p.Students)
@@ -131,7 +133,7 @@ namespace SchoolApi.Controllers
 
         [HttpDelete("{id}/students/{studentId}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> RemoveStudent(int id, int studentId)
+        public async Task<IActionResult> RemoveStudent(Guid id, Guid studentId)
         {
             var parent = await _context.Parents
                 .Include(p => p.Students)
@@ -154,7 +156,7 @@ namespace SchoolApi.Controllers
             return NoContent();
         }
 
-        private bool ParentExists(int id)
+        private bool ParentExists(Guid id)
         {
             return _context.Parents.Any(e => e.Id == id);
         }

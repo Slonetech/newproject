@@ -35,7 +35,7 @@ namespace SchoolApi.Controllers
 
         [HttpGet("{id}")]
         [Authorize(Roles = "Admin,Teacher")]
-        public async Task<ActionResult<Attendance>> GetAttendance(int id)
+        public async Task<ActionResult<Attendance>> GetAttendance(Guid id)
         {
             var attendance = await _context.Attendances
                 .Include(a => a.Student)
@@ -51,7 +51,7 @@ namespace SchoolApi.Controllers
         }
 
         [HttpGet("student/{studentId}")]
-        public async Task<ActionResult<IEnumerable<Attendance>>> GetStudentAttendances(int studentId)
+        public async Task<ActionResult<IEnumerable<Attendance>>> GetStudentAttendances(Guid studentId)
         {
             return await _context.Attendances
                 .Include(a => a.Course)
@@ -60,7 +60,7 @@ namespace SchoolApi.Controllers
         }
 
         [HttpGet("course/{courseId}")]
-        public async Task<ActionResult<IEnumerable<Attendance>>> GetCourseAttendances(int courseId)
+        public async Task<ActionResult<IEnumerable<Attendance>>> GetCourseAttendances(Guid courseId)
         {
             return await _context.Attendances
                 .Include(a => a.Student)
@@ -99,7 +99,7 @@ namespace SchoolApi.Controllers
                         parent.Email,
                         student.FirstName,
                         student.LastName,
-                        course.Title,
+                        course.Name,
                         attendance.IsPresent,
                         attendance.Date
                     );
@@ -115,7 +115,7 @@ namespace SchoolApi.Controllers
 
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,Teacher")]
-        public async Task<IActionResult> UpdateAttendance(int id, Attendance attendance)
+        public async Task<IActionResult> UpdateAttendance(Guid id, Attendance attendance)
         {
             if (id != attendance.Id)
             {
@@ -148,7 +148,7 @@ namespace SchoolApi.Controllers
                             parent.Email,
                             existingAttendance.Student.FirstName,
                             existingAttendance.Student.LastName,
-                            existingAttendance.Course.Title,
+                            existingAttendance.Course.Name,
                             attendance.IsPresent,
                             attendance.Date
                         );
@@ -176,7 +176,7 @@ namespace SchoolApi.Controllers
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteAttendance(int id)
+        public async Task<IActionResult> DeleteAttendance(Guid id)
         {
             var attendance = await _context.Attendances.FindAsync(id);
             if (attendance == null)
@@ -190,7 +190,7 @@ namespace SchoolApi.Controllers
             return NoContent();
         }
 
-        private bool AttendanceExists(int id)
+        private bool AttendanceExists(Guid id)
         {
             return _context.Attendances.Any(e => e.Id == id);
         }

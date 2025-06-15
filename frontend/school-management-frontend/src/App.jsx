@@ -5,78 +5,61 @@ import { AuthProvider, ProtectedRoute } from './context/AuthContext';
 // Layout Components
 import Navbar from './components/Layout/Navbar';
 
-// Pages - Organized by function/role
+// Auth Pages
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
 
-// Common Pages (accessible to specific roles or public)
-import Root from './pages/Common/Root';
-import Dashboard from './pages/Common/Dashboard'; // General dashboard
+// Common Pages
 import NotFound from './pages/Common/NotFound';
 import UnauthorizedPage from './pages/Common/UnauthorizedPage';
 
 // Admin Management Pages
-import AdminDashboard from './pages/Admin/AdminDashboard'; // Admin landing page
+import AdminDashboard from './pages/Admin/AdminDashboard';
 import UserManagementPage from './pages/Admin/UserManagementPage';
 import TeacherManagementPage from './pages/Admin/TeacherManagementPage';
 import ParentManagementPage from './pages/Admin/ParentManagementPage';
 
-// General Data Pages (content adapts based on user's role)
-import StudentsPage from './pages/StudentsPage';
-import CoursesPage from './pages/CoursesPage';
-import GradesPage from './pages/GradesPage';
-import AttendancePage from './pages/AttendancePage';
-
 // Role-Specific Dashboards
-import TeacherDashboard from './pages/Common/TeacherDashboard';
-import StudentDashboard from './pages/Common/StudentDashboard';
-import ParentDashboard from './pages/Common/ParentDashboard';
+import TeacherDashboard from './pages/Teacher/TeacherDashboard';
+import StudentDashboard from './pages/Student/StudentDashboard';
+import ParentDashboard from './pages/Parent/ParentDashboard';
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
       <AuthProvider>
         <Navbar />
-        {/* Main content area with consistent padding and min height */}
         <div className="container mx-auto p-4 min-h-screen">
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<Root />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             <Route path="/not-found" element={<NotFound />} />
 
-            {/* General Authenticated Dashboard - Accessible by anyone logged in */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-
-            {/* Admin-Specific Routes & Dashboards */}
+            {/* Admin Routes */}
             <Route path="/admin" element={
               <ProtectedRoute allowedRoles={['Admin']}>
-                <AdminDashboard /> {/* Admin landing page */}
+                <AdminDashboard />
               </ProtectedRoute>
             } />
             <Route path="/admin/users" element={
               <ProtectedRoute allowedRoles={['Admin']}>
-                <UserManagementPage /> {/* Manage all users */}
+                <UserManagementPage />
               </ProtectedRoute>
             } />
             <Route path="/admin/teachers" element={
               <ProtectedRoute allowedRoles={['Admin']}>
-                <TeacherManagementPage /> {/* Manage teacher profiles */}
+                <TeacherManagementPage />
               </ProtectedRoute>
             } />
             <Route path="/admin/parents" element={
               <ProtectedRoute allowedRoles={['Admin']}>
-                <ParentManagementPage /> {/* Manage parent profiles */}
+                <ParentManagementPage />
               </ProtectedRoute>
             } />
 
-            {/* Role-Specific Dashboards (primary landing for role) */}
+            {/* Role-Specific Dashboards */}
             <Route path="/teacher" element={
               <ProtectedRoute allowedRoles={['Teacher']}>
                 <TeacherDashboard />
@@ -93,30 +76,10 @@ function App() {
               </ProtectedRoute>
             } />
 
-            {/* General Data Pages - Content adapts based on user's roles (e.g., Admin sees all, Student sees self) */}
-            {/* These routes allow multi-role access but the component itself should filter/display data */}
-            <Route path="/students" element={
-              <ProtectedRoute allowedRoles={['Admin', 'Teacher', 'Student', 'Parent']}>
-                <StudentsPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/courses" element={
-              <ProtectedRoute allowedRoles={['Admin', 'Teacher', 'Student', 'Parent']}>
-                <CoursesPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/grades" element={
-              <ProtectedRoute allowedRoles={['Admin', 'Teacher', 'Student', 'Parent']}>
-                <GradesPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/attendance" element={
-              <ProtectedRoute allowedRoles={['Admin', 'Teacher', 'Student', 'Parent']}>
-                <AttendancePage />
-              </ProtectedRoute>
-            } />
+            {/* Redirect root to login */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
 
-            {/* Catch-all for any other unmatched routes - redirects to /not-found */}
+            {/* Catch-all for any other unmatched routes */}
             <Route path="*" element={<Navigate to="/not-found" replace />} />
           </Routes>
         </div>

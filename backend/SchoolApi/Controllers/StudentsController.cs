@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
 using SchoolApi.Models;
+using System;
 
 namespace SchoolApi.Controllers
 {
@@ -31,7 +32,7 @@ namespace SchoolApi.Controllers
 
         // GET: api/Students/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Student>> GetStudent(int id)
+        public async Task<ActionResult<Student>> GetStudent(Guid id)
         {
             var student = await _context.Students
                 .Include(s => s.Parents)
@@ -51,7 +52,7 @@ namespace SchoolApi.Controllers
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateStudent(int id, Student student)
+        public async Task<IActionResult> UpdateStudent(Guid id, Student student)
         {
             if (id != student.Id)
             {
@@ -94,7 +95,7 @@ namespace SchoolApi.Controllers
         // DELETE: api/Students/5
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteStudent(int id)
+        public async Task<IActionResult> DeleteStudent(Guid id)
         {
             var student = await _context.Students.FindAsync(id);
             if (student == null)
@@ -110,7 +111,7 @@ namespace SchoolApi.Controllers
 
         [HttpPost("{id}/parents/{parentId}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> AddParent(int id, int parentId)
+        public async Task<IActionResult> AddParent(Guid id, Guid parentId)
         {
             var student = await _context.Students
                 .Include(s => s.Parents)
@@ -135,7 +136,7 @@ namespace SchoolApi.Controllers
 
         [HttpDelete("{id}/parents/{parentId}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> RemoveParent(int id, int parentId)
+        public async Task<IActionResult> RemoveParent(Guid id, Guid parentId)
         {
             var student = await _context.Students
                 .Include(s => s.Parents)
@@ -158,7 +159,7 @@ namespace SchoolApi.Controllers
             return NoContent();
         }
 
-        private bool StudentExists(int id)
+        private bool StudentExists(Guid id)
         {
             return _context.Students.Any(e => e.Id == id);
         }

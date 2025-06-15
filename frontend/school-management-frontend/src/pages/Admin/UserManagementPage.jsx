@@ -24,6 +24,29 @@ const UserManagementPage = () => {
     });
     const [availableRoles, setAvailableRoles] = useState([]); // All roles for selection
 
+    // Initialize form data when selectedUser changes
+    useEffect(() => {
+        if (selectedUser) {
+            setFormData({
+                username: selectedUser.username || '',
+                email: selectedUser.email || '',
+                firstName: selectedUser.firstName || '',
+                lastName: selectedUser.lastName || '',
+                password: '', // Password is not edited via this form for security
+                initialRole: selectedUser.roles?.[0] || 'Student',
+            });
+        } else {
+            setFormData({
+                username: '',
+                email: '',
+                password: '',
+                firstName: '',
+                lastName: '',
+                initialRole: 'Student',
+            });
+        }
+    }, [selectedUser]);
+
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         setError('');
@@ -59,7 +82,7 @@ const UserManagementPage = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => ({ ...prev, [name]: value || '' })); // Ensure empty string if value is undefined
     };
 
     const handleCreateUser = async (e) => {
