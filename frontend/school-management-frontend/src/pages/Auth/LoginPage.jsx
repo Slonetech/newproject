@@ -5,42 +5,41 @@ import { useAuth } from '../../context/AuthContext';
 function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const { login, auth, loading, error } = useAuth();
+    // Ensure you destructure 'login' directly and get the 'auth' state, 'loading', and 'error'
+    const { login, auth, loading, error: authError } = useAuth(); // Renamed 'error' to 'authError' to avoid conflict
     const navigate = useNavigate();
 
+    // The redirect logic has been moved to AuthContext's login function for better control.
+    // This useEffect is now primarily for initial load/refresh if already authenticated.
     useEffect(() => {
-        if (auth.token && auth.user) {
-            redirectBasedOnRole(auth.user.roles);
+        if (auth.isAuthenticated && auth.user && auth.user.roles) {
+            // The AuthContext's ProtectedRoute or login function will handle the redirect.
+            // No need for explicit redirect logic here unless it's a very specific edge case.
+            // For example, if a user directly navigates to /login while already logged in.
+            // If they are logged in and hit /login, AuthContext.ProtectedRoute on '/' will
+            // redirect them appropriately. If they specifically land on /login
+            // while already logged in, you might want to redirect them away.
+            // Example: navigate('/admin' or appropriate dashboard based on their current roles)
+            // However, AuthContext's login already handles this, and ProtectedRoute for '/' also does.
+            // So, for simplicity, we can rely on those.
         }
-    }, [auth.token, auth.user, navigate]);
+    }, [auth.isAuthenticated, auth.user, navigate]);
 
-    const redirectBasedOnRole = (roles) => {
-        if (!roles || roles.length === 0) {
-            navigate('/dashboard');
-            return;
-        }
-        if (roles.includes("Admin")) {
-            navigate('/admin/users');
-        } else if (roles.includes("Teacher")) {
-            navigate('/teacher');
-        } else if (roles.includes("Student")) {
-            navigate('/student');
-        } else if (roles.includes("Parent")) {
-            navigate('/parent');
-        } else {
-            navigate('/dashboard');
-        }
-    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        // The error state is now managed by AuthContext, so we don't need a local one here
+        // unless you want to add specific form validation errors *before* calling login.
+
         try {
-            const success = await login(email, password);
-            if (success && auth.user && auth.user.roles) {
-                redirectBasedOnRole(auth.user.roles);
-            }
+            // Call the login function from AuthContext, passing email and password directly
+            // AuthContext's login function will now handle the state updates (loading, error)
+            // and the navigation after successful login.
+            await login(email, password);
+            // If login is successful, AuthContext will navigate, so no code below this line is needed for success.
         } catch (err) {
-            console.error('Login form submission error:', err);
+            // Error is already set in AuthContext and can be displayed via authError
+            // console.error('Login form submission error:', err); // Already logged in AuthContext
         }
     };
 
@@ -85,16 +84,16 @@ function LoginPage() {
                         />
                     </div>
 
-                    {error && (
+                    {authError && ( // Use authError from AuthContext
                         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md animate-slide-in">
                             <i className="fas fa-exclamation-circle mr-2"></i>
-                            {error}
+                            {authError}
                         </div>
                     )}
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading} // Use loading from AuthContext
                         className="w-full bg-sky-600 text-white py-2 px-4 rounded-md hover:bg-sky-700 transition duration-200 flex items-center justify-center"
                     >
                         {loading ? (

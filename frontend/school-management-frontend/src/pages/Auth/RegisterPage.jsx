@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register as apiRegister } from '../../services/authService';
+import { useAuth } from '../../context/AuthContext'; // Import useAuth hook
 
 function RegisterPage() {
     const [form, setForm] = useState({
-        username: '',
-        email: '',
-        password: '',
         firstName: '',
         lastName: '',
+        username: '', // Keep if your backend handles it, otherwise remove it from state and input
+        email: '',
+        password: '',
     });
     const [error, setError] = useState(null);
-    const [successMessage, setSuccessMessage] = useState(null);
+    // const [successMessage, setSuccessMessage] = useState(null); // No longer needed as we'll auto-login
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+    const { login } = useAuth(); // Get the login function from AuthContext
 
     const handleChange = (e) => {
         const { id, value } = e.target;
@@ -23,16 +25,21 @@ function RegisterPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
-        setSuccessMessage(null);
+        // setSuccessMessage(null); // No longer needed
 
         setIsLoading(true);
         try {
-            await apiRegister(form);
-            setSuccessMessage('Registration successful! You can now log in.');
-            setForm({ username: '', email: '', password: '', firstName: '', lastName: '' });
-            setTimeout(() => {
-                navigate('/login');
-            }, 1500);
+            // First, call the registration API
+            const { email, password, firstName, lastName } = form; // Destructure to send only relevant fields
+            await apiRegister({ email, password, firstName, lastName });
+
+            // If registration is successful, then automatically log the user in
+            // The 'login' function from AuthContext will handle setting auth state and redirection.
+            await login(email, password); // Pass email and password directly to AuthContext's login
+
+            // No need for success message or manual navigation to /login here,
+            // as 'login' from AuthContext handles the entire post-login flow.
+
         } catch (err) {
             console.error('Registration error:', err);
             setError(err.message || 'An unexpected error occurred during registration.');
@@ -84,6 +91,8 @@ function RegisterPage() {
                         </div>
                     </div>
 
+                    {/* Keep username input if your backend truly needs it for registration
+                        If not, remove this entire div */}
                     <div className="space-y-2">
                         <label htmlFor="username" className="flex items-center text-sky-700 font-medium">
                             <i className="fas fa-at text-sky-400 mr-2"></i>
@@ -139,12 +148,13 @@ function RegisterPage() {
                         </div>
                     )}
 
-                    {successMessage && (
+                    {/* No success message display needed if immediately redirecting */}
+                    {/* {successMessage && (
                         <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md animate-slide-in">
                             <i className="fas fa-check-circle mr-2"></i>
                             {successMessage}
                         </div>
-                    )}
+                    )} */}
 
                     <button
                         type="submit"

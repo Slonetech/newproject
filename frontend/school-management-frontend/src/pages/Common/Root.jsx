@@ -105,7 +105,7 @@ function Root() {
                             <h4 className="text-lg font-semibold mb-4">Contact</h4>
                             <ul className="space-y-2 text-gray-400">
                                 <li>Email: support@school.com</li>
-                                <li>Phone: (555) 123-4567</li>
+                                <li>Phone: (+254) 123-4567</li>
                             </ul>
                         </div>
                         <div>
