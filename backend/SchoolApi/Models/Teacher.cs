@@ -46,13 +46,14 @@ namespace SchoolApi.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
+        public string? Address { get; set; } // Or string Address { get; set; } = string.Empty;
 
-        // Navigation property for courses
-        public virtual ICollection<Course> Courses { get; set; }
+        // Navigation property for TeacherCourses (the many-to-many intermediary)
+        public virtual ICollection<TeacherCourse> TeacherCourses { get; set; }
 
         public Teacher()
         {
-            Courses = new HashSet<Course>();
+            TeacherCourses = new HashSet<TeacherCourse>();
         }
     }
 }

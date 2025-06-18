@@ -19,6 +19,7 @@ namespace SchoolApi.Data
         public DbSet<Attendance> Attendances { get; set; }
         public DbSet<Parent> Parents { get; set; }
         public DbSet<StudentCourse> StudentCourses { get; set; }
+        public DbSet<TeacherCourse> TeacherCourses { get; set; } // Add this DbSet
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<Event> Events { get; set; }
 
@@ -52,7 +53,7 @@ namespace SchoolApi.Data
                 .HasForeignKey(s => s.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Configure many-to-many relationships
+            // Configure many-to-many relationships for StudentCourse
             builder.Entity<StudentCourse>()
                 .HasKey(sc => new { sc.StudentId, sc.CourseId });
 
@@ -68,12 +69,28 @@ namespace SchoolApi.Data
                 .HasForeignKey(sc => sc.CourseId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure one-to-many relationships
-            builder.Entity<Course>()
-                .HasOne(c => c.Teacher)
-                .WithMany(t => t.Courses)
-                .HasForeignKey(c => c.TeacherId)
-                .OnDelete(DeleteBehavior.SetNull);
+            // Configure many-to-many relationship for TeacherCourse
+            builder.Entity<TeacherCourse>()
+                .HasKey(tc => new { tc.TeacherId, tc.CourseId }); // Define composite primary key
+
+            builder.Entity<TeacherCourse>()
+                .HasOne(tc => tc.Teacher)
+                .WithMany(t => t.TeacherCourses)
+                .HasForeignKey(tc => tc.TeacherId)
+                .OnDelete(DeleteBehavior.Cascade); // Adjust cascade behavior as needed
+
+            builder.Entity<TeacherCourse>()
+                .HasOne(tc => tc.Course)
+                .WithMany(c => c.TeacherCourses)
+                .HasForeignKey(tc => tc.CourseId)
+                .OnDelete(DeleteBehavior.Cascade); // Adjust cascade behavior as needed
+
+            // Removed the old Course-Teacher one-to-many relationship
+            // builder.Entity<Course>()
+            //     .HasOne(c => c.Teacher)
+            //     .WithMany(t => t.Courses)
+            //     .HasForeignKey(c => c.TeacherId)
+            //     .OnDelete(DeleteBehavior.SetNull);
 
             builder.Entity<Attendance>()
                 .HasOne(a => a.Student)

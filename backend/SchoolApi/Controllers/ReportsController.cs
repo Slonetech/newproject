@@ -3,7 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
 using SchoolApi.Models;
-using SchoolApi.Models.DTOs.Reports;
+using SchoolApi.Models.DTOs.Reports; // Assuming these DTOs exist
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace SchoolApi.Controllers
 {
@@ -24,12 +28,15 @@ namespace SchoolApi.Controllers
         {
             var student = await _context.Students
                 .Include(s => s.Grades)
-                .ThenInclude(g => g.Course)
+                    .ThenInclude(g => g.Course)
+                        .ThenInclude(c => c.TeacherCourses) // Include TeacherCourses to get teacher info for courses
+                            .ThenInclude(tc => tc.Teacher)
+                .Where(s => s.IsActive) // Only active students
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (student == null)
             {
-                return NotFound();
+                return NotFound("Student not found or is inactive.");
             }
 
             var report = new StudentProgressReport
@@ -42,9 +49,14 @@ namespace SchoolApi.Controllers
                     {
                         CourseId = g.Key.Id,
                         CourseName = g.Key.Name,
-                        AverageGrade = g.Average(grade => grade.Value),
-                        LastGrade = g.OrderByDescending(grade => grade.Date).First().Value,
-                        LastGradeDate = g.OrderByDescending(grade => grade.Date).First().Date
+                        // Get all teachers for the course
+                        Teachers = g.Key.TeacherCourses
+                                         .Select(tc => $"{tc.Teacher.FirstName} {tc.Teacher.LastName}")
+                                         .ToList(),
+                        // Corrected lines: Assign directly to properties within the initializer
+                        AverageGrade = g.Any() ? (decimal)g.Average(grade => grade.Value) : 0M, // Use 0M for decimal literal
+                        LastGrade = g.Any() ? (decimal?)g.OrderByDescending(grade => grade.Date).FirstOrDefault()?.Value : null, // Handle nullable and potential null grade
+                        LastGradeDate = g.OrderByDescending(grade => grade.Date).FirstOrDefault()?.Date ?? DateTime.MinValue // Null check
                     })
                     .ToList()
             };
@@ -57,16 +69,19 @@ namespace SchoolApi.Controllers
         {
             var parent = await _context.Parents
                 .Include(p => p.Students)
-                .ThenInclude(s => s.Grades)
-                .ThenInclude(g => g.Course)
+                    .ThenInclude(s => s.Grades)
+                        .ThenInclude(g => g.Course)
+                            .ThenInclude(c => c.TeacherCourses) // Include TeacherCourses
+                                .ThenInclude(tc => tc.Teacher)
+                .Where(p => p.IsActive) // Only active parents
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (parent == null)
             {
-                return NotFound();
+                return NotFound("Parent not found or is inactive.");
             }
 
-            var reports = parent.Students.Select(student => new StudentProgressReport
+            var reports = parent.Students.Where(s => s.IsActive).Select(student => new StudentProgressReport
             {
                 StudentId = student.Id,
                 StudentName = $"{student.FirstName} {student.LastName}",
@@ -76,9 +91,13 @@ namespace SchoolApi.Controllers
                     {
                         CourseId = g.Key.Id,
                         CourseName = g.Key.Name,
-                        AverageGrade = g.Average(grade => grade.Value),
-                        LastGrade = g.OrderByDescending(grade => grade.Date).First().Value,
-                        LastGradeDate = g.OrderByDescending(grade => grade.Date).First().Date
+                        Teachers = g.Key.TeacherCourses
+                                         .Select(tc => $"{tc.Teacher.FirstName} {tc.Teacher.LastName}")
+                                         .ToList(),
+                        // Corrected lines: Assign directly to properties within the initializer
+                        AverageGrade = g.Any() ? (decimal)g.Average(grade => grade.Value) : 0M,
+                        LastGrade = g.Any() ? (decimal?)g.OrderByDescending(grade => grade.Date).FirstOrDefault()?.Value : null,
+                        LastGradeDate = g.OrderByDescending(grade => grade.Date).FirstOrDefault()?.Date ?? DateTime.MinValue
                     })
                     .ToList()
             });
@@ -91,11 +110,15 @@ namespace SchoolApi.Controllers
         {
             var course = await _context.Courses
                 .Include(c => c.Grades)
+                .Include(c => c.TeacherCourses) // Include TeacherCourses to get teacher info for course summary
+                    .ThenInclude(tc => tc.Teacher)
+                .Include(c => c.StudentCourses) // Include StudentCourses for total students (if not already counted via grades)
+                .Where(c => c.IsActive) // Only active courses
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             if (course == null)
             {
-                return NotFound();
+                return NotFound("Course not found or is inactive.");
             }
 
             var grades = course.Grades.Select(g => g.Value).ToList();
@@ -103,10 +126,12 @@ namespace SchoolApi.Controllers
             {
                 CourseId = course.Id,
                 CourseName = course.Name,
-                TotalStudents = grades.Count,
-                AverageGrade = grades.Any() ? grades.Average() : 0,
-                HighestGrade = grades.Any() ? grades.Max() : 0,
-                LowestGrade = grades.Any() ? grades.Min() : 0,
+                CourseCode = course.Code, // Include Course Code
+                Teachers = course.TeacherCourses.Select(tc => $"{tc.Teacher.FirstName} {tc.Teacher.LastName}").ToList(), // Get all assigned teachers
+                TotalStudents = course.StudentCourses.Count(sc => sc.Student.IsActive), // Count active students
+                AverageGrade = grades.Any() ? (decimal)grades.Average() : 0M, // Explicit cast to decimal
+                HighestGrade = grades.Any() ? (decimal)grades.Max() : 0M,    // Explicit cast to decimal
+                LowestGrade = grades.Any() ? (decimal)grades.Min() : 0M,      // Explicit cast to decimal
                 GradeDistribution = new List<GradeDistribution>
                 {
                     new() { Range = "90-100", Count = grades.Count(g => g >= 90) },
@@ -140,12 +165,13 @@ namespace SchoolApi.Controllers
                     .GroupBy(a => a.Course)
                     .Select(g => new CourseAttendance
                     {
-                        CourseId = g.Key.Id,
-                        CourseName = g.Key.Name,
+                        CourseId = g.Key?.Id ?? Guid.Empty, // Null check for g.Key
+                        CourseName = g.Key?.Name ?? "Unknown Course", // Null check for g.Key
                         TotalStudents = g.Select(a => a.StudentId).Distinct().Count(),
                         PresentCount = g.Count(a => a.IsPresent),
                         AbsentCount = g.Count(a => !a.IsPresent),
-                        AttendanceRate = (double)g.Count(a => a.IsPresent) / g.Count() * 100
+                        // Avoid division by zero
+                        AttendanceRate = g.Any() ? (double)g.Count(a => a.IsPresent) / g.Count() * 100 : 0
                     })
                     .ToList()
             };

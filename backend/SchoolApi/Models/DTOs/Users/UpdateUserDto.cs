@@ -16,6 +16,7 @@ namespace SchoolApi.Models.DTOs.Users
         [EmailAddress]
         [StringLength(100)]
         public string Email { get; set; } = string.Empty;
+        public string? UserName { get; set; }
 
         public List<string>? Roles { get; set; }
     }

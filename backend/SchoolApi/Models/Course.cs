@@ -23,10 +23,7 @@ namespace SchoolApi.Models
 
         public int Credits { get; set; }
 
-        public Guid? TeacherId { get; set; }
-
-        [ForeignKey("TeacherId")]
-        public Teacher? Teacher { get; set; }
+        // Removed TeacherId and Teacher navigation property as they are now in TeacherCourse
 
         public bool IsActive { get; set; } = true;
 
@@ -38,12 +35,14 @@ namespace SchoolApi.Models
         public virtual ICollection<StudentCourse> StudentCourses { get; set; }
         public virtual ICollection<Grade> Grades { get; set; }
         public virtual ICollection<Attendance> Attendances { get; set; }
+        public virtual ICollection<TeacherCourse> TeacherCourses { get; set; } // New navigation property for TeacherCourses
 
         public Course()
         {
             StudentCourses = new HashSet<StudentCourse>();
             Grades = new HashSet<Grade>();
             Attendances = new HashSet<Attendance>();
+            TeacherCourses = new HashSet<TeacherCourse>(); // Initialize the new collection
         }
     }
 }

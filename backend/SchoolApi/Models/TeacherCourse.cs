@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -5,11 +6,16 @@ namespace SchoolApi.Models
 {
     public class TeacherCourse
     {
-        public int TeacherId { get; set; }
-        public required Teacher Teacher { get; set; } // Mark as required
+        // Composite Key for TeacherCourse
+        [Key]
+        [Column(Order = 1)] // Specify order for composite key
+        public Guid TeacherId { get; set; }
+        public Teacher Teacher { get; set; } = null!; // Mark as required with null-forgiving operator
 
-        public int CourseId { get; set; }
-        public required Course Course { get; set; } // Mark as required
+        [Key]
+        [Column(Order = 2)] // Specify order for composite key
+        public Guid CourseId { get; set; }
+        public Course Course { get; set; } = null!; // Mark as required with null-forgiving operator
 
         public DateTime AssignmentDate { get; set; } = DateTime.UtcNow;
     }

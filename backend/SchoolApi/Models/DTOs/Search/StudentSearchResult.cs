@@ -14,10 +14,4 @@ namespace SchoolApi.Models.DTOs.Search
         public List<CourseInfo> Courses { get; set; } = new();
     }
 
-    public class CourseInfo
-    {
-        public Guid Id { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string TeacherName { get; set; } = string.Empty;
-    }
 }

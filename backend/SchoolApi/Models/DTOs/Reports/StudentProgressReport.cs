@@ -10,14 +10,4 @@ namespace SchoolApi.Models.DTOs.Reports
         public List<CourseProgress> Courses { get; set; } = new List<CourseProgress>();
     }
 
-    public class CourseProgress
-    {
-        public Guid CourseId { get; set; }
-        public string CourseName { get; set; } = string.Empty;
-        public double AverageGrade { get; set; }
-        public double AttendanceRate { get; set; }
-        public double LastGrade { get; set; }
-        public DateTime LastGradeDate { get; set; }
-        public DateTime LastUpdated { get; set; }
-    }
 }

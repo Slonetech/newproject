@@ -41,6 +41,8 @@ namespace SchoolApi.Models
 
         public DateTime EnrollmentDate { get; set; } = DateTime.UtcNow;
 
+        public bool IsActive { get; set; }
+
         // Navigation properties
         public ApplicationUser? User { get; set; }
         public Parent? Parent { get; set; }

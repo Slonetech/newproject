@@ -25,6 +25,7 @@ namespace SchoolApi.Models
         public string? PhoneNumber { get; set; }
 
         public string? Address { get; set; }
+        public bool IsActive { get; set; }
 
         // Navigation properties
         public ApplicationUser? User { get; set; }

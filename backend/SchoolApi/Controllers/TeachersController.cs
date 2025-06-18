@@ -12,7 +12,7 @@ namespace SchoolApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin")] // Ensure proper authorization
     public class TeachersController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -28,7 +28,8 @@ namespace SchoolApi.Controllers
         {
             return await _context.Teachers
                 .Include(t => t.User)
-                .Include(t => t.Courses)
+                .Include(t => t.TeacherCourses) // Include the many-to-many join table
+                    .ThenInclude(tc => tc.Course) // Then include the Course from the join table
                 .Where(t => t.IsActive)
                 .ToListAsync();
         }
@@ -39,7 +40,8 @@ namespace SchoolApi.Controllers
         {
             var teacher = await _context.Teachers
                 .Include(t => t.User)
-                .Include(t => t.Courses)
+                .Include(t => t.TeacherCourses) // Include the many-to-many join table
+                    .ThenInclude(tc => tc.Course) // Then include the Course from the join table
                 .FirstOrDefaultAsync(t => t.Id == id && t.IsActive);
 
             if (teacher == null)
@@ -62,6 +64,7 @@ namespace SchoolApi.Controllers
             teacher.Id = Guid.NewGuid();
             teacher.HireDate = DateTime.UtcNow;
             teacher.IsActive = true;
+            teacher.CreatedAt = DateTime.UtcNow; // Ensure CreatedAt is set
 
             _context.Teachers.Add(teacher);
             await _context.SaveChangesAsync();
@@ -83,14 +86,24 @@ namespace SchoolApi.Controllers
                 return BadRequest(ModelState);
             }
 
-            var existingTeacher = await _context.Teachers.FindAsync(id);
+            var existingTeacher = await _context.Teachers
+                .Include(t => t.TeacherCourses) // Include for potential updates to assignments
+                .FirstOrDefaultAsync(t => t.Id == id);
+
             if (existingTeacher == null)
             {
                 return NotFound();
             }
 
+            // Update scalar properties
             _context.Entry(existingTeacher).CurrentValues.SetValues(teacher);
             existingTeacher.UpdatedAt = DateTime.UtcNow;
+
+            // Handle TeacherCourse assignments (this is a more complex logic and might require DTOs)
+            // For simplicity here, we assume if you're updating a teacher, you might not be directly
+            // updating their course assignments through this endpoint. If you are,
+            // you'd need to compare existingTeacher.TeacherCourses with teacher.TeacherCourses
+            // and add/remove accordingly. For now, we'll assume a separate endpoint for assignments.
 
             try
             {
@@ -108,12 +121,12 @@ namespace SchoolApi.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Teachers/5
+        // DELETE: api/Teachers/5 (Soft Delete)
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTeacher(Guid id)
         {
             var teacher = await _context.Teachers
-                .Include(t => t.Courses)
+                .Include(t => t.TeacherCourses) // Include TeacherCourses to handle associated assignments
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (teacher == null)
@@ -125,12 +138,10 @@ namespace SchoolApi.Controllers
             teacher.IsActive = false;
             teacher.UpdatedAt = DateTime.UtcNow;
 
-            // Remove teacher from courses
-            foreach (var course in teacher.Courses)
-            {
-                course.TeacherId = Guid.Empty;
-                course.UpdatedAt = DateTime.UtcNow;
-            }
+            // Disassociate from courses by marking TeacherCourses as inactive (if TeacherCourse had IsActive)
+            // Or, if a TeacherCourse implies active assignment, you might delete them or handle them differently
+            // Here, we'll effectively remove the association by deleting the TeacherCourse entries
+            _context.TeacherCourses.RemoveRange(teacher.TeacherCourses);
 
             await _context.SaveChangesAsync();
 
@@ -139,73 +150,78 @@ namespace SchoolApi.Controllers
 
         // GET: api/Teachers/5/Courses
         [HttpGet("{id}/courses")]
-        public async Task<ActionResult<IEnumerable<Course>>> GetTeacherCourses(Guid id)
+        public async Task<ActionResult<IEnumerable<Course>>> GetTeacherAssignedCourses(Guid id)
         {
             var teacher = await _context.Teachers
-                .Include(t => t.Courses)
+                .Include(t => t.TeacherCourses)
+                    .ThenInclude(tc => tc.Course)
                 .FirstOrDefaultAsync(t => t.Id == id && t.IsActive);
 
             if (teacher == null)
             {
-                return NotFound();
+                return NotFound("Teacher not found or is inactive.");
             }
 
-            return teacher.Courses.ToList();
+            return teacher.TeacherCourses.Select(tc => tc.Course).ToList();
         }
 
-        // POST: api/Teachers/5/Courses
-        [HttpPost("{id}/courses")]
-        public async Task<ActionResult<Course>> AssignCourse(Guid id, [FromBody] Course course)
+        // POST: api/Teachers/5/Courses/{courseId} - Assign a course to a teacher
+        [HttpPost("{teacherId}/courses/{courseId}")]
+        public async Task<IActionResult> AssignCourseToTeacher(Guid teacherId, Guid courseId)
         {
-            var teacher = await _context.Teachers
-                .Include(t => t.Courses)
-                .FirstOrDefaultAsync(t => t.Id == id && t.IsActive);
+            var teacher = await _context.Teachers.FindAsync(teacherId);
+            var course = await _context.Courses.FindAsync(courseId);
 
-            if (teacher == null)
+            if (teacher == null || !teacher.IsActive)
             {
-                return NotFound("Teacher not found");
+                return NotFound("Teacher not found or is inactive.");
             }
 
-            var existingCourse = await _context.Courses.FindAsync(course.Id);
-            if (existingCourse == null)
+            if (course == null || !course.IsActive)
             {
-                return NotFound("Course not found");
+                return NotFound("Course not found or is inactive.");
             }
 
-            existingCourse.TeacherId = id;
-            existingCourse.UpdatedAt = DateTime.UtcNow;
+            // Check if the assignment already exists
+            var existingAssignment = await _context.TeacherCourses
+                .AnyAsync(tc => tc.TeacherId == teacherId && tc.CourseId == courseId);
 
+            if (existingAssignment)
+            {
+                return Conflict("This course is already assigned to this teacher.");
+            }
+
+            var teacherCourse = new TeacherCourse
+            {
+                TeacherId = teacherId,
+                CourseId = courseId,
+                AssignmentDate = DateTime.UtcNow
+            };
+
+            _context.TeacherCourses.Add(teacherCourse);
             await _context.SaveChangesAsync();
 
-            return Ok(existingCourse);
+            return CreatedAtAction(nameof(GetTeacherAssignedCourses), new { id = teacherId }, teacherCourse);
         }
 
-        // DELETE: api/Teachers/5/Courses/3
+        // DELETE: api/Teachers/5/Courses/{courseId} - Remove a course from a teacher
         [HttpDelete("{teacherId}/courses/{courseId}")]
-        public async Task<IActionResult> RemoveCourse(Guid teacherId, Guid courseId)
+        public async Task<IActionResult> RemoveCourseFromTeacher(Guid teacherId, Guid courseId)
         {
-            var teacher = await _context.Teachers
-                .Include(t => t.Courses)
-                .FirstOrDefaultAsync(t => t.Id == teacherId && t.IsActive);
+            var teacherCourse = await _context.TeacherCourses
+                .FirstOrDefaultAsync(tc => tc.TeacherId == teacherId && tc.CourseId == courseId);
 
-            if (teacher == null)
+            if (teacherCourse == null)
             {
-                return NotFound("Teacher not found");
+                return NotFound("Assignment not found for this teacher and course.");
             }
 
-            var course = teacher.Courses.FirstOrDefault(c => c.Id == courseId);
-            if (course == null)
-            {
-                return NotFound("Course not found for this teacher");
-            }
-
-            course.TeacherId = Guid.Empty;
-            course.UpdatedAt = DateTime.UtcNow;
-
+            _context.TeacherCourses.Remove(teacherCourse);
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
+
 
         private bool TeacherExists(Guid id)
         {
