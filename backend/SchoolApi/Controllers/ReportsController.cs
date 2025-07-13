@@ -68,11 +68,12 @@ namespace SchoolApi.Controllers
         public async Task<ActionResult<IEnumerable<StudentProgressReport>>> GetParentReport(Guid id)
         {
             var parent = await _context.Parents
-                .Include(p => p.Students)
-                    .ThenInclude(s => s.Grades)
-                        .ThenInclude(g => g.Course)
-                            .ThenInclude(c => c.TeacherCourses) // Include TeacherCourses
-                                .ThenInclude(tc => tc.Teacher)
+                .Include(p => p.ChildLinks)
+                    .ThenInclude(cl => cl.Student)
+                        .ThenInclude(s => s.Grades)
+                            .ThenInclude(g => g.Course)
+                                .ThenInclude(c => c.TeacherCourses)
+                                    .ThenInclude(tc => tc.Teacher)
                 .Where(p => p.IsActive) // Only active parents
                 .FirstOrDefaultAsync(p => p.Id == id);
 
@@ -112,7 +113,7 @@ namespace SchoolApi.Controllers
                 .Include(c => c.Grades)
                 .Include(c => c.TeacherCourses) // Include TeacherCourses to get teacher info for course summary
                     .ThenInclude(tc => tc.Teacher)
-                .Include(c => c.StudentCourses) // Include StudentCourses for total students (if not already counted via grades)
+                .Include(c => c.Enrollments)
                 .Where(c => c.IsActive) // Only active courses
                 .FirstOrDefaultAsync(c => c.Id == id);
 
@@ -128,7 +129,7 @@ namespace SchoolApi.Controllers
                 CourseName = course.Name,
                 CourseCode = course.Code, // Include Course Code
                 Teachers = course.TeacherCourses.Select(tc => $"{tc.Teacher.FirstName} {tc.Teacher.LastName}").ToList(), // Get all assigned teachers
-                TotalStudents = course.StudentCourses.Count(sc => sc.Student.IsActive), // Count active students
+                TotalStudents = course.Enrollments.Count(e => e.Student.IsActive), // Count active students
                 AverageGrade = grades.Any() ? (decimal)grades.Average() : 0M, // Explicit cast to decimal
                 HighestGrade = grades.Any() ? (decimal)grades.Max() : 0M,    // Explicit cast to decimal
                 LowestGrade = grades.Any() ? (decimal)grades.Min() : 0M,      // Explicit cast to decimal

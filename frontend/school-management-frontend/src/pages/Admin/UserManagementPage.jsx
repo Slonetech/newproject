@@ -28,12 +28,12 @@ const UserManagementPage = () => {
     useEffect(() => {
         if (selectedUser) {
             setFormData({
-                username: selectedUser.username || '',
-                email: selectedUser.email || '',
-                firstName: selectedUser.firstName || '',
-                lastName: selectedUser.lastName || '',
+                username: selectedUser.username ?? '',
+                email: selectedUser.email ?? '',
+                firstName: selectedUser.firstName ?? '',
+                lastName: selectedUser.lastName ?? '',
                 password: '', // Password is not edited via this form for security
-                initialRole: selectedUser.roles?.[0] || 'Student',
+                initialRole: selectedUser.roles?.[0] ?? 'Student',
             });
         } else {
             setFormData({
@@ -82,7 +82,7 @@ const UserManagementPage = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value || '' })); // Ensure empty string if value is undefined
+        setFormData(prev => ({ ...prev, [name]: value ?? '' })); // Ensure empty string if value is undefined
     };
 
     const handleCreateUser = async (e) => {

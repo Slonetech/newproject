@@ -14,6 +14,8 @@ using Microsoft.IdentityModel.Tokens;
 using SchoolApi.Data;
 using SchoolApi.Models;
 using SchoolApi.Models.DTOs.Auth;
+using SchoolApi.Models.DTOs.Admin;
+using SchoolApi.Services;
 
 namespace SchoolApi.Controllers
 {
@@ -25,17 +27,20 @@ namespace SchoolApi.Controllers
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _context;
+        private readonly IRefreshTokenService _refreshTokenService;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
             IConfiguration configuration,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IRefreshTokenService refreshTokenService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _configuration = configuration;
             _context = context;
+            _refreshTokenService = refreshTokenService;
         }
 
         // POST: api/Auth/login
@@ -59,6 +64,7 @@ namespace SchoolApi.Controllers
 
                 var roles = await _userManager.GetRolesAsync(user);
                 var token = GenerateJwtToken(user, roles);
+                var refreshToken = await _refreshTokenService.GenerateRefreshTokenAsync(user);
 
                 // Get user profile based on roles
                 object? profile = null;
@@ -81,6 +87,8 @@ namespace SchoolApi.Controllers
                 return Ok(new
                 {
                     token,
+                    refreshToken = refreshToken.Token,
+                    refreshTokenExpiry = refreshToken.ExpiryDate,
                     user = new
                     {
                         id = user.Id,
@@ -137,6 +145,64 @@ namespace SchoolApi.Controllers
             {
                 return StatusCode(500, new { message = "An error occurred during registration", error = ex.Message });
             }
+        }
+
+        // POST: api/Auth/refresh-token
+        [HttpPost("refresh-token")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RefreshToken([FromBody] string refreshToken)
+        {
+            if (string.IsNullOrWhiteSpace(refreshToken))
+                return BadRequest(new { message = "Refresh token is required." });
+
+            var storedToken = await _refreshTokenService.GetRefreshTokenAsync(refreshToken);
+            if (storedToken == null || storedToken.IsRevoked || storedToken.ExpiryDate < DateTime.UtcNow)
+                return Unauthorized(new { message = "Invalid or expired refresh token." });
+
+            // Rotate the refresh token
+            var newRefreshToken = await _refreshTokenService.RotateRefreshTokenAsync(storedToken);
+            var user = storedToken.User;
+            var roles = await _userManager.GetRolesAsync(user);
+            var newJwt = GenerateJwtToken(user, roles);
+
+            return Ok(new
+            {
+                token = newJwt,
+                refreshToken = newRefreshToken.Token,
+                refreshTokenExpiry = newRefreshToken.ExpiryDate
+            });
+        }
+
+        // POST: api/Auth/logout
+        [HttpPost("logout")]
+        [Authorize]
+        public async Task<IActionResult> Logout([FromBody] string refreshToken)
+        {
+            if (string.IsNullOrWhiteSpace(refreshToken))
+                return BadRequest(new { message = "Refresh token is required." });
+
+            var storedToken = await _refreshTokenService.GetRefreshTokenAsync(refreshToken);
+            if (storedToken == null || storedToken.IsRevoked)
+                return Ok(new { message = "Already logged out or invalid token." });
+
+            await _refreshTokenService.InvalidateRefreshTokenAsync(storedToken);
+            return Ok(new { message = "Logged out successfully." });
+        }
+
+        // POST: api/Auth/assign-role
+        [HttpPost("assign-role")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AssignRole([FromBody] RoleAssignmentDto model)
+        {
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+            if (!await _roleManager.RoleExistsAsync(model.Role))
+                return BadRequest(new { message = "Role does not exist" });
+            var result = await _userManager.AddToRoleAsync(user, model.Role);
+            if (!result.Succeeded)
+                return BadRequest(new { message = "Failed to assign role", errors = result.Errors });
+            return Ok(new { message = $"Role '{model.Role}' assigned to user '{model.Email}'" });
         }
 
         private string GenerateJwtToken(ApplicationUser user, IList<string> roles)

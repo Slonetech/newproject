@@ -1,53 +1,55 @@
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useProfileData } from '../../hooks/useProfileData';
 
 const StudentDashboard = () => {
-    const { user } = useAuth();
+  const { data: student, loading, error } = useProfileData('/Students/me');
 
-    return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-2xl font-bold mb-6">Student Dashboard</h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Welcome Card */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold mb-4">Welcome, {user?.firstName}!</h2>
-                    <p className="text-gray-600">View your courses, grades, and attendance.</p>
-                </div>
+  if (loading) return <p>Loading student info...</p>;
+  if (error) return <p style={{ color: 'red' }}>{error}</p>;
+  if (!student) return <p>No student data found.</p>;
 
-                {/* Quick Stats */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold mb-4">Quick Stats</h2>
-                    <div className="space-y-2">
-                        <p className="text-gray-600">Enrolled Courses: <span className="font-semibold">0</span></p>
-                        <p className="text-gray-600">Average Grade: <span className="font-semibold">N/A</span></p>
-                        <p className="text-gray-600">Attendance Rate: <span className="font-semibold">N/A</span></p>
-                    </div>
-                </div>
-
-                {/* Recent Activity */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
-                    <p className="text-gray-600">No recent activity to display.</p>
-                </div>
-            </div>
-
-            {/* Today's Schedule */}
-            <div className="mt-8">
-                <h2 className="text-xl font-semibold mb-4">Today's Schedule</h2>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <p className="text-gray-600">No classes scheduled for today.</p>
-                </div>
-            </div>
-
-            {/* Course Overview */}
-            <div className="mt-8">
-                <h2 className="text-xl font-semibold mb-4">Your Courses</h2>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <p className="text-gray-600">No courses enrolled yet.</p>
-                </div>
-            </div>
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Student Dashboard</h1>
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-2">
+          {student.firstName} {student.lastName}
+        </h2>
+        <p>Email: {student.email}</p>
+        <p>Grade: {student.grade}</p>
+      </div>
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Enrolled Courses</h2>
+        <ul>
+          {student.courses && student.courses.length > 0 ? (
+            student.courses.map((course) => (
+              <li key={course.id}>
+                {course.name} ({course.code})
+              </li>
+            ))
+          ) : (
+            <li>No courses enrolled.</li>
+          )}
+        </ul>
+      </div>
+      {student.grades && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Grades</h2>
+          <ul>
+            {student.grades.length > 0 ? (
+              student.grades.map((grade) => (
+                <li key={grade.id}>
+                  {grade.courseName}: {grade.value}
+                </li>
+              ))
+            ) : (
+              <li>No grades available.</li>
+            )}
+          </ul>
         </div>
-    );
+      )}
+    </div>
+  );
 };
 
 export default StudentDashboard; 

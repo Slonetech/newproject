@@ -89,7 +89,65 @@ const teacherService = {
             console.error(`Error removing course ${courseId} from teacher ${teacherId}:`, error.response?.data || error.message);
             throw error;
         }
-    }
+    },
+
+    // Get courses assigned to the logged-in teacher (mock data for development)
+    getCoursesForTeacher: async (teacherId) => {
+        // Simulate API delay
+        await new Promise((res) => setTimeout(res, 300));
+        return [
+            {
+                id: 'course1',
+                name: 'Mathematics',
+                code: 'MATH101',
+                department: 'Mathematics',
+                studentCount: 3,
+            },
+            {
+                id: 'course2',
+                name: 'Physics',
+                code: 'PHYS201',
+                department: 'Science',
+                studentCount: 2,
+            },
+        ];
+    },
+    // Get students and their grades for a course (mock data)
+    getCourseStudentsWithGrades: async (courseId) => {
+        await new Promise((res) => setTimeout(res, 300));
+        const students = [
+            { id: 'stu1', firstName: 'Alice', lastName: 'Johnson' },
+            { id: 'stu2', firstName: 'Bob', lastName: 'Smith' },
+            { id: 'stu3', firstName: 'Charlie', lastName: 'Lee' },
+        ];
+        const grades = {
+            stu1: 'A',
+            stu2: 'B+',
+            stu3: 'C',
+        };
+        return { students, grades };
+    },
+    // Update a student's grade for a course (mock, always succeeds)
+    updateStudentGrade: async (courseId, studentId, grade) => {
+        await new Promise((res) => setTimeout(res, 200));
+        return { success: true };
+    },
+    // Get students for a course (mock data)
+    getCourseStudents: async (courseId) => {
+        await new Promise((res) => setTimeout(res, 300));
+        return {
+            students: [
+                { id: 'stu1', firstName: 'Alice', lastName: 'Johnson' },
+                { id: 'stu2', firstName: 'Bob', lastName: 'Smith' },
+                { id: 'stu3', firstName: 'Charlie', lastName: 'Lee' },
+            ],
+        };
+    },
+    // Record attendance for a course and date (mock, always succeeds)
+    recordAttendance: async (courseId, date, attendance) => {
+        await new Promise((res) => setTimeout(res, 200));
+        return { success: true };
+    },
 };
 
 export default teacherService; 

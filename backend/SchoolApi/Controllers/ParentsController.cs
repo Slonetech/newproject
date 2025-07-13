@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
 using SchoolApi.Models;
-using System;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace SchoolApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
     public class ParentsController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -21,144 +22,97 @@ namespace SchoolApi.Controllers
 
         // GET: api/Parents
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Parent>>> GetParents()
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllParents()
         {
-            return await _context.Parents
-                .Include(p => p.User)
-                .Include(p => p.Students)
-                .ToListAsync();
+            var parents = await _context.Parents.ToListAsync();
+            return Ok(parents);
         }
 
-        // GET: api/Parents/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Parent>> GetParent(Guid id)
+        // GET: api/Parents/children
+        [HttpGet("children")]
+        [Authorize(Roles = "Parent")]
+        public async Task<IActionResult> GetChildren()
         {
+            // Extract logged-in user's ID from JWT claims
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(ClaimTypes.Name);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "User ID not found in token." });
+
             var parent = await _context.Parents
-                .Include(p => p.User)
-                .Include(p => p.Students)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
+                .Include(p => p.ChildLinks)
+                    .ThenInclude(cl => cl.Student)
+                .FirstOrDefaultAsync(p => p.UserId == userId);
             if (parent == null)
-            {
-                return NotFound();
-            }
+                return NotFound(new { message = "Parent profile not found." });
 
-            return parent;
+            var children = parent.ChildLinks.Select(cl => cl.Student).ToList();
+            return Ok(children);
         }
 
-        // POST: api/Parents
-        [HttpPost]
-        [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<Parent>> CreateParent(Parent parent)
+        // GET: api/Parents/me
+        [HttpGet("me")]
+        [Authorize(Roles = "Parent")]
+        public async Task<IActionResult> GetMe()
         {
-            parent.Id = Guid.NewGuid();
-            _context.Parents.Add(parent);
-            await _context.SaveChangesAsync();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(ClaimTypes.Name);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "User ID not found in token." });
 
-            return CreatedAtAction(nameof(GetParent), new { id = parent.Id }, parent);
-        }
+            var parent = await _context.Parents
+                .Include(p => p.ChildLinks)
+                    .ThenInclude(cl => cl.Student)
+                        .ThenInclude(s => s.Enrollments)
+                            .ThenInclude(e => e.Course)
+                .Include(p => p.ChildLinks)
+                    .ThenInclude(cl => cl.Student)
+                        .ThenInclude(s => s.Grades)
+                            .ThenInclude(g => g.Course)
+                .Include(p => p.ChildLinks)
+                    .ThenInclude(cl => cl.Student)
+                        .ThenInclude(s => s.Attendances)
+                            .ThenInclude(a => a.Course)
+                .FirstOrDefaultAsync(p => p.UserId == userId);
+            if (parent == null)
+                return NotFound(new { message = "Parent profile not found." });
 
-        // PUT: api/Parents/5
-        [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> UpdateParent(Guid id, Parent parent)
-        {
-            if (id != parent.Id)
+            var dto = new
             {
-                return BadRequest();
-            }
-
-            _context.Entry(parent).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ParentExists(id))
+                id = parent.Id,
+                firstName = parent.FirstName,
+                lastName = parent.LastName,
+                email = parent.Email,
+                children = parent.ChildLinks.Select(cl =>
                 {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
-        // DELETE: api/Parents/5
-        [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteParent(Guid id)
-        {
-            var parent = await _context.Parents.FindAsync(id);
-            if (parent == null)
-            {
-                return NotFound();
-            }
-
-            _context.Parents.Remove(parent);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        [HttpPost("{id}/students/{studentId}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> AddStudent(Guid id, Guid studentId)
-        {
-            var parent = await _context.Parents
-                .Include(p => p.Students)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (parent == null)
-            {
-                return NotFound("Parent not found");
-            }
-
-            var student = await _context.Students.FindAsync(studentId);
-            if (student == null)
-            {
-                return NotFound("Student not found");
-            }
-
-            parent.Students.Add(student);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        [HttpDelete("{id}/students/{studentId}")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> RemoveStudent(Guid id, Guid studentId)
-        {
-            var parent = await _context.Parents
-                .Include(p => p.Students)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (parent == null)
-            {
-                return NotFound("Parent not found");
-            }
-
-            var student = parent.Students.FirstOrDefault(s => s.Id == studentId);
-            if (student == null)
-            {
-                return NotFound("Student not found");
-            }
-
-            parent.Students.Remove(student);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool ParentExists(Guid id)
-        {
-            return _context.Parents.Any(e => e.Id == id);
+                    var s = cl.Student;
+                    return new
+                    {
+                        id = s.Id,
+                        firstName = s.FirstName,
+                        lastName = s.LastName,
+                        courses = s.Enrollments.Select(e => new
+                        {
+                            id = e.Course.Id,
+                            name = e.Course.Name,
+                            code = e.Course.Code
+                        }).ToList(),
+                        grades = s.Grades.Select(g => new
+                        {
+                            id = g.Id,
+                            courseName = g.Course.Name,
+                            value = g.Value
+                        }).ToList(),
+                        attendance = s.Attendances.Select(a => new
+                        {
+                            id = a.Id,
+                            courseName = a.Course.Name,
+                            isPresent = a.IsPresent,
+                            date = a.Date
+                        }).ToList()
+                    };
+                }).ToList()
+            };
+            return Ok(dto);
         }
     }
 }

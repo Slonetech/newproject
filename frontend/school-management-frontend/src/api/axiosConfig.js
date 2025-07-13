@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { getToken, logout } from '../services/authService'; // Corrected import for getToken and logout
 
+// IMPORTANT: Update baseURL to match your backend port (e.g., http://localhost:5000 or https://localhost:5001)
 const axiosInstance = axios.create({
-    baseURL: 'http://localhost:5248', // Remove /api since it's added by controllers
+    baseURL: 'http://localhost:5248', // Change this if your backend runs on a different port
     headers: {
         'Content-Type': 'application/json',
     },

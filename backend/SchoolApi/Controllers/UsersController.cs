@@ -292,7 +292,10 @@ namespace SchoolApi.Controllers
                     if (teacher != null)
                     {
                         // Remove all TeacherCourse associations for this teacher
-                        _context.TeacherCourses.RemoveRange(teacher.TeacherCourses);
+                        var teacherCourses = await _context.TeacherCourses
+                            .Where(tc => tc.TeacherId == teacher.Id)
+                            .ToListAsync();
+                        _context.TeacherCourses.RemoveRange(teacherCourses);
                         await _context.SaveChangesAsync(); // Save changes for associations first
 
                         // Now delete the teacher record (or soft delete it if applicable to your Teacher model)
@@ -302,20 +305,29 @@ namespace SchoolApi.Controllers
                 else if (roles.Contains("Student"))
                 {
                     var student = await _context.Students
-                                                .Include(s => s.StudentCourses)
+                                                .Include(s => s.Enrollments)
                                                 .Include(s => s.Grades)
                                                 .Include(s => s.Attendances)
                                                 .FirstOrDefaultAsync(s => s.UserId == id);
                     if (student != null)
                     {
                         // Remove student from all courses
-                        _context.StudentCourses.RemoveRange(student.StudentCourses);
+                        var enrollments = await _context.Enrollments
+                            .Where(e => e.StudentId == student.Id)
+                            .ToListAsync();
+                        _context.Enrollments.RemoveRange(enrollments);
 
                         // Remove student's grades
-                        _context.Grades.RemoveRange(student.Grades);
+                        var grades = await _context.Grades
+                            .Where(g => g.StudentId == student.Id)
+                            .ToListAsync();
+                        _context.Grades.RemoveRange(grades);
 
                         // Remove student's attendance records
-                        _context.Attendances.RemoveRange(student.Attendances);
+                        var attendances = await _context.Attendances
+                            .Where(a => a.StudentId == student.Id)
+                            .ToListAsync();
+                        _context.Attendances.RemoveRange(attendances);
 
                         await _context.SaveChangesAsync(); // Save changes for related records first
 
@@ -326,16 +338,15 @@ namespace SchoolApi.Controllers
                 else if (roles.Contains("Parent"))
                 {
                     var parent = await _context.Parents
-                                                .Include(p => p.Students) // Include students to nullify ParentId
                                                 .FirstOrDefaultAsync(p => p.UserId == id);
                     if (parent != null)
                     {
-                        // Update all students to remove the parent reference
-                        foreach (var student in parent.Students)
-                        {
-                            student.ParentId = null; // Disassociate student from parent
-                        }
-                        await _context.SaveChangesAsync(); // Save changes for students first
+                        // Remove all ParentChild links for this parent
+                        var parentLinks = await _context.ParentChildren
+                            .Where(pc => pc.ParentId == parent.Id)
+                            .ToListAsync();
+                        _context.ParentChildren.RemoveRange(parentLinks);
+                        await _context.SaveChangesAsync(); // Save changes for links first
 
                         // Now delete the parent record (or soft delete it)
                         _context.Parents.Remove(parent);

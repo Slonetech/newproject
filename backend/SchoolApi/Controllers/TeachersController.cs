@@ -3,16 +3,17 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolApi.Data;
 using SchoolApi.Models;
-using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
+using System;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace SchoolApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Admin")] // Ensure proper authorization
     public class TeachersController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -24,208 +25,186 @@ namespace SchoolApi.Controllers
 
         // GET: api/Teachers
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Teacher>>> GetTeachers()
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllTeachers()
         {
-            return await _context.Teachers
-                .Include(t => t.User)
-                .Include(t => t.TeacherCourses) // Include the many-to-many join table
-                    .ThenInclude(tc => tc.Course) // Then include the Course from the join table
-                .Where(t => t.IsActive)
-                .ToListAsync();
+            var teachers = await _context.Teachers.ToListAsync();
+            return Ok(teachers);
         }
 
-        // GET: api/Teachers/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Teacher>> GetTeacher(Guid id)
+        // GET: api/Teachers/profile
+        [HttpGet("profile")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> GetTeacherProfile()
         {
-            var teacher = await _context.Teachers
-                .Include(t => t.User)
-                .Include(t => t.TeacherCourses) // Include the many-to-many join table
-                    .ThenInclude(tc => tc.Course) // Then include the Course from the join table
-                .FirstOrDefaultAsync(t => t.Id == id && t.IsActive);
+            // Extract logged-in user's ID from JWT claims
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(ClaimTypes.Name);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "User ID not found in token." });
 
+            var teacher = await _context.Teachers.FirstOrDefaultAsync(t => t.UserId == userId);
             if (teacher == null)
-            {
-                return NotFound();
-            }
+                return NotFound(new { message = "Teacher profile not found." });
 
-            return teacher;
+            return Ok(teacher);
+        }
+
+        // GET: api/Teachers/me
+        [HttpGet("me")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> GetMe()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(ClaimTypes.Name);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "User ID not found in token." });
+
+            var teacher = await _context.Teachers
+                .Include(t => t.TeacherCourses)
+                    .ThenInclude(tc => tc.Course)
+                .FirstOrDefaultAsync(t => t.UserId == userId);
+            if (teacher == null)
+                return NotFound(new { message = "Teacher profile not found." });
+
+            var dto = new
+            {
+                id = teacher.Id,
+                firstName = teacher.FirstName,
+                lastName = teacher.LastName,
+                email = teacher.Email,
+                courses = teacher.TeacherCourses.Select(tc => new
+                {
+                    id = tc.Course.Id,
+                    name = tc.Course.Name,
+                    code = tc.Course.Code
+                }).ToList()
+            };
+            return Ok(dto);
         }
 
         // POST: api/Teachers
         [HttpPost]
-        public async Task<ActionResult<Teacher>> CreateTeacher(Teacher teacher)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateTeacher([FromBody] Models.DTOs.TeacherCreateDto dto)
         {
-            if (!ModelState.IsValid)
+            // Log the incoming request for debugging
+            Console.WriteLine($"CreateTeacher called with dto: {System.Text.Json.JsonSerializer.Serialize(dto)}");
+
+            if (dto == null)
             {
-                return BadRequest(ModelState);
-            }
-
-            teacher.Id = Guid.NewGuid();
-            teacher.HireDate = DateTime.UtcNow;
-            teacher.IsActive = true;
-            teacher.CreatedAt = DateTime.UtcNow; // Ensure CreatedAt is set
-
-            _context.Teachers.Add(teacher);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetTeacher), new { id = teacher.Id }, teacher);
-        }
-
-        // PUT: api/Teachers/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateTeacher(Guid id, Teacher teacher)
-        {
-            if (id != teacher.Id)
-            {
-                return BadRequest();
+                Console.WriteLine("CreateTeacher: dto is null");
+                return BadRequest(new { message = "Teacher data is required" });
             }
 
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+                Console.WriteLine($"CreateTeacher: Validation failed with errors: {string.Join(", ", errors)}");
+                return BadRequest(new { message = "Validation failed", errors });
             }
 
-            var existingTeacher = await _context.Teachers
-                .Include(t => t.TeacherCourses) // Include for potential updates to assignments
-                .FirstOrDefaultAsync(t => t.Id == id);
-
-            if (existingTeacher == null)
+            // Check if email already exists
+            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+            if (existingUser != null)
             {
-                return NotFound();
+                Console.WriteLine($"CreateTeacher: Email {dto.Email} already exists");
+                return Conflict(new { message = "A user with this email already exists." });
             }
 
-            // Update scalar properties
-            _context.Entry(existingTeacher).CurrentValues.SetValues(teacher);
-            existingTeacher.UpdatedAt = DateTime.UtcNow;
-
-            // Handle TeacherCourse assignments (this is a more complex logic and might require DTOs)
-            // For simplicity here, we assume if you're updating a teacher, you might not be directly
-            // updating their course assignments through this endpoint. If you are,
-            // you'd need to compare existingTeacher.TeacherCourses with teacher.TeacherCourses
-            // and add/remove accordingly. For now, we'll assume a separate endpoint for assignments.
-
-            try
+            // Create ApplicationUser
+            var user = new ApplicationUser
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!TeacherExists(id))
-                {
-                    return NotFound();
-                }
-                throw;
-            }
-
-            return NoContent();
-        }
-
-        // DELETE: api/Teachers/5 (Soft Delete)
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteTeacher(Guid id)
-        {
-            var teacher = await _context.Teachers
-                .Include(t => t.TeacherCourses) // Include TeacherCourses to handle associated assignments
-                .FirstOrDefaultAsync(t => t.Id == id);
-
-            if (teacher == null)
-            {
-                return NotFound();
-            }
-
-            // Soft delete - mark as inactive
-            teacher.IsActive = false;
-            teacher.UpdatedAt = DateTime.UtcNow;
-
-            // Disassociate from courses by marking TeacherCourses as inactive (if TeacherCourse had IsActive)
-            // Or, if a TeacherCourse implies active assignment, you might delete them or handle them differently
-            // Here, we'll effectively remove the association by deleting the TeacherCourse entries
-            _context.TeacherCourses.RemoveRange(teacher.TeacherCourses);
-
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        // GET: api/Teachers/5/Courses
-        [HttpGet("{id}/courses")]
-        public async Task<ActionResult<IEnumerable<Course>>> GetTeacherAssignedCourses(Guid id)
-        {
-            var teacher = await _context.Teachers
-                .Include(t => t.TeacherCourses)
-                    .ThenInclude(tc => tc.Course)
-                .FirstOrDefaultAsync(t => t.Id == id && t.IsActive);
-
-            if (teacher == null)
-            {
-                return NotFound("Teacher not found or is inactive.");
-            }
-
-            return teacher.TeacherCourses.Select(tc => tc.Course).ToList();
-        }
-
-        // POST: api/Teachers/5/Courses/{courseId} - Assign a course to a teacher
-        [HttpPost("{teacherId}/courses/{courseId}")]
-        public async Task<IActionResult> AssignCourseToTeacher(Guid teacherId, Guid courseId)
-        {
-            var teacher = await _context.Teachers.FindAsync(teacherId);
-            var course = await _context.Courses.FindAsync(courseId);
-
-            if (teacher == null || !teacher.IsActive)
-            {
-                return NotFound("Teacher not found or is inactive.");
-            }
-
-            if (course == null || !course.IsActive)
-            {
-                return NotFound("Course not found or is inactive.");
-            }
-
-            // Check if the assignment already exists
-            var existingAssignment = await _context.TeacherCourses
-                .AnyAsync(tc => tc.TeacherId == teacherId && tc.CourseId == courseId);
-
-            if (existingAssignment)
-            {
-                return Conflict("This course is already assigned to this teacher.");
-            }
-
-            var teacherCourse = new TeacherCourse
-            {
-                TeacherId = teacherId,
-                CourseId = courseId,
-                AssignmentDate = DateTime.UtcNow
+                UserName = dto.Email,
+                Email = dto.Email,
+                FirstName = dto.FirstName,
+                LastName = dto.LastName,
+                SecurityStamp = Guid.NewGuid().ToString(),
             };
 
-            _context.TeacherCourses.Add(teacherCourse);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetTeacherAssignedCourses), new { id = teacherId }, teacherCourse);
-        }
-
-        // DELETE: api/Teachers/5/Courses/{courseId} - Remove a course from a teacher
-        [HttpDelete("{teacherId}/courses/{courseId}")]
-        public async Task<IActionResult> RemoveCourseFromTeacher(Guid teacherId, Guid courseId)
-        {
-            var teacherCourse = await _context.TeacherCourses
-                .FirstOrDefaultAsync(tc => tc.TeacherId == teacherId && tc.CourseId == courseId);
-
-            if (teacherCourse == null)
+            // Get UserManager service
+            var userManager = HttpContext.RequestServices.GetService(typeof(UserManager<ApplicationUser>)) as UserManager<ApplicationUser>;
+            if (userManager == null)
             {
-                return NotFound("Assignment not found for this teacher and course.");
+                return StatusCode(500, new { message = "UserManager service not available." });
             }
 
-            _context.TeacherCourses.Remove(teacherCourse);
-            await _context.SaveChangesAsync();
+            var result = await userManager.CreateAsync(user, dto.Password);
+            if (!result.Succeeded)
+            {
+                var errors = result.Errors.Select(e => e.Description).ToList();
+                Console.WriteLine($"CreateTeacher: Failed to create user. Errors: {string.Join(", ", errors)}");
+                return BadRequest(new { message = "Failed to create user.", errors = result.Errors });
+            }
 
-            return NoContent();
+            // Assign Teacher role
+            var roleResult = await userManager.AddToRoleAsync(user, "Teacher");
+            if (!roleResult.Succeeded)
+            {
+                // If role assignment fails, clean up the created user
+                await userManager.DeleteAsync(user);
+                return BadRequest(new { message = "Failed to assign Teacher role.", errors = roleResult.Errors });
+            }
+
+            Teacher teacher;
+            try
+            {
+                // Create Teacher entity
+                teacher = new Teacher
+                {
+                    UserId = user.Id,
+                    FirstName = dto.FirstName,
+                    LastName = dto.LastName,
+                    Email = dto.Email,
+                    PhoneNumber = dto.PhoneNumber,
+                    Specialization = dto.Specialization,
+                    Department = dto.Department,
+                    DateOfBirth = dto.DateOfBirth,
+                    HireDate = dto.HireDate,
+                    Address = dto.Address,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Teachers.Add(teacher);
+                await _context.SaveChangesAsync();
+
+                // Link ApplicationUser to Teacher
+                user.TeacherId = teacher.Id;
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                // If Teacher creation fails, clean up the created user
+                await userManager.DeleteAsync(user);
+                return StatusCode(500, new { message = "Failed to create teacher profile.", error = ex.Message });
+            }
+
+            return CreatedAtAction(nameof(GetAllTeachers), new { id = teacher.Id }, new { teacher.Id, teacher.FirstName, teacher.LastName, teacher.Email });
         }
 
-
-        private bool TeacherExists(Guid id)
+        // PUT: api/Teachers/{id}
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateTeacher(Guid id, [FromBody] Models.DTOs.TeacherCreateDto dto)
         {
-            return _context.Teachers.Any(e => e.Id == id);
+            var teacher = await _context.Teachers.FindAsync(id);
+            if (teacher == null)
+                return NotFound(new { message = "Teacher not found." });
+
+            teacher.FirstName = dto.FirstName;
+            teacher.LastName = dto.LastName;
+            teacher.Email = dto.Email;
+            teacher.PhoneNumber = dto.PhoneNumber;
+            teacher.Specialization = dto.Specialization;
+            teacher.Department = dto.Department;
+            teacher.DateOfBirth = dto.DateOfBirth;
+            teacher.HireDate = dto.HireDate;
+            teacher.Address = dto.Address;
+            teacher.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Teacher updated successfully." });
         }
     }
 }

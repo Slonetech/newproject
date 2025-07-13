@@ -6,27 +6,95 @@ using Microsoft.IdentityModel.Tokens;
 using SchoolApi.Data;
 using SchoolApi.Models;
 using SchoolApi.Services;
+using SchoolApi.Middleware;
+using SchoolApi.Hubs;
+using System.Text.Json.Serialization;
+using Serilog;
+using Serilog.Events;
+using Microsoft.OpenApi.Models;
+using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .WriteTo.Console()
+    .WriteTo.File("Logs/school-api-.txt", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
+    .CreateLogger();
 
-builder.Services.AddControllers();
+builder.Host.UseSerilog();
+
+// Add services to the container.
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.WriteIndented = true;
+    });
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "School Management System API",
+        Version = "v1",
+        Description = "A comprehensive REST API for managing school operations including students, teachers, courses, grades, and attendance.",
+        Contact = new OpenApiContact
+        {
+            Name = "School Management Team",
+            Email = "support@schoolmanagement.com"
+        }
+    });
+
+    // Add JWT Authentication to Swagger
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    // Include XML comments
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+});
 
 // Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp",
+    options.AddPolicy("AllowFrontend",
         builder => builder
-            .WithOrigins("http://localhost:5173")
+            .WithOrigins("http://localhost:5173") // React app port (Vite default)
             .AllowAnyMethod()
             .AllowAnyHeader()
             .AllowCredentials());
 });
-
 
 // Configure DbContext with SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -42,6 +110,15 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequireUppercase = true;
     options.Password.RequireNonAlphanumeric = true;
     options.Password.RequiredLength = 8;
+
+    // Lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+
+    // User settings
+    options.User.RequireUniqueEmail = true;
+    options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
@@ -66,8 +143,20 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Register Email Service
+// Register Services
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ICourseService, CourseService>();
+builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
+// Add SignalR
+builder.Services.AddSignalR();
+
+// Add Memory Cache
+builder.Services.AddMemoryCache();
+
+// Rate Limiting will be implemented in a future update
+// For now, we'll use basic request throttling through middleware
 
 var app = builder.Build();
 
@@ -75,23 +164,43 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "School Management API v1");
+        c.RoutePrefix = string.Empty; // Set Swagger UI at root
+    });
 }
 
 // Enable CORS policy
-app.UseCors("AllowReactApp");
+app.UseCors("AllowFrontend");
+
+// Use Global Exception Handler
+app.UseMiddleware<GlobalExceptionHandler>();
 
 app.UseHttpsRedirection();
+
+// Rate limiting middleware will be added in future update
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
+// Map SignalR Hub
+app.MapHub<NotificationHub>("/notificationHub");
+
 // Seed data
 using (var scope = app.Services.CreateScope())
 {
-    await DataSeeder.SeedData(scope.ServiceProvider);
+    try
+    {
+        await DataSeeder.SeedData(scope.ServiceProvider);
+        Log.Information("Data seeding completed successfully");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "An error occurred while seeding data");
+    }
 }
 
 app.Run();

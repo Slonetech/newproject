@@ -18,10 +18,14 @@ namespace SchoolApi.Data
         public DbSet<Grade> Grades { get; set; }
         public DbSet<Attendance> Attendances { get; set; }
         public DbSet<Parent> Parents { get; set; }
-        public DbSet<StudentCourse> StudentCourses { get; set; }
-        public DbSet<TeacherCourse> TeacherCourses { get; set; } // Add this DbSet
+        public DbSet<ParentChild> ParentChildren { get; set; }
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<Event> Events { get; set; }
+        public DbSet<Enrollment> Enrollments { get; set; }
+        public DbSet<TeacherCourse> TeacherCourses { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<Assignment> Assignments { get; set; }
+        public DbSet<AssignmentSubmission> AssignmentSubmissions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -46,51 +50,33 @@ namespace SchoolApi.Data
                 .HasForeignKey<Parent>(p => p.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure Parent-Student relationship
-            builder.Entity<Student>()
-                .HasOne(s => s.Parent)
-                .WithMany(p => p.Students)
-                .HasForeignKey(s => s.ParentId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // Configure many-to-many relationships for StudentCourse
-            builder.Entity<StudentCourse>()
-                .HasKey(sc => new { sc.StudentId, sc.CourseId });
-
-            builder.Entity<StudentCourse>()
-                .HasOne(sc => sc.Student)
-                .WithMany(s => s.StudentCourses)
-                .HasForeignKey(sc => sc.StudentId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<StudentCourse>()
-                .HasOne(sc => sc.Course)
-                .WithMany(c => c.StudentCourses)
-                .HasForeignKey(sc => sc.CourseId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // Configure many-to-many relationship for ParentChild
+            builder.Entity<ParentChild>()
+                .HasKey(pc => new { pc.ParentId, pc.StudentId });
+            builder.Entity<ParentChild>()
+                .HasOne(pc => pc.Parent)
+                .WithMany(p => p.ChildLinks)
+                .HasForeignKey(pc => pc.ParentId)
+                .OnDelete(DeleteBehavior.Restrict); // Fix: Restrict to avoid multiple cascade paths
+            builder.Entity<ParentChild>()
+                .HasOne(pc => pc.Student)
+                .WithMany(s => s.ParentLinks)
+                .HasForeignKey(pc => pc.StudentId)
+                .OnDelete(DeleteBehavior.Restrict); // Fix: Restrict to avoid multiple cascade paths
 
             // Configure many-to-many relationship for TeacherCourse
             builder.Entity<TeacherCourse>()
-                .HasKey(tc => new { tc.TeacherId, tc.CourseId }); // Define composite primary key
+                .HasKey(tc => new { tc.TeacherId, tc.CourseId });
 
             builder.Entity<TeacherCourse>()
                 .HasOne(tc => tc.Teacher)
                 .WithMany(t => t.TeacherCourses)
-                .HasForeignKey(tc => tc.TeacherId)
-                .OnDelete(DeleteBehavior.Cascade); // Adjust cascade behavior as needed
+                .HasForeignKey(tc => tc.TeacherId);
 
             builder.Entity<TeacherCourse>()
                 .HasOne(tc => tc.Course)
                 .WithMany(c => c.TeacherCourses)
-                .HasForeignKey(tc => tc.CourseId)
-                .OnDelete(DeleteBehavior.Cascade); // Adjust cascade behavior as needed
-
-            // Removed the old Course-Teacher one-to-many relationship
-            // builder.Entity<Course>()
-            //     .HasOne(c => c.Teacher)
-            //     .WithMany(t => t.Courses)
-            //     .HasForeignKey(c => c.TeacherId)
-            //     .OnDelete(DeleteBehavior.SetNull);
+                .HasForeignKey(tc => tc.CourseId);
 
             builder.Entity<Attendance>()
                 .HasOne(a => a.Student)
@@ -128,6 +114,12 @@ namespace SchoolApi.Data
                 .WithMany()
                 .HasForeignKey(e => e.CreatedById)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Enrollment: use Id as PK, StudentId+CourseId as alternate key
+            builder.Entity<Enrollment>()
+                .HasKey(e => e.Id);
+            builder.Entity<Enrollment>()
+                .HasAlternateKey(e => new { e.StudentId, e.CourseId });
 
             // Configure indexes
             builder.Entity<Student>()
@@ -177,18 +169,49 @@ namespace SchoolApi.Data
                     Credits = 3,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
-                },
-                new Course
-                {
-                    Id = Guid.NewGuid(),
-                    Name = "Social Studies",
-                    Code = "SOC101",
-                    Description = "Introduction to social sciences",
-                    Credits = 3,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
                 }
             );
+
+            builder.Entity<Enrollment>()
+                .HasOne(e => e.Student)
+                .WithMany(s => s.Enrollments)
+                .HasForeignKey(e => e.StudentId);
+
+            builder.Entity<Enrollment>()
+                .HasOne(e => e.Course)
+                .WithMany(c => c.Enrollments)
+                .HasForeignKey(e => e.CourseId);
+
+            builder.Entity<RefreshToken>()
+                .HasOne(rt => rt.User)
+                .WithMany()
+                .HasForeignKey(rt => rt.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure Assignment relationships
+            builder.Entity<Assignment>()
+                .HasOne(a => a.Course)
+                .WithMany()
+                .HasForeignKey(a => a.CourseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Assignment>()
+                .HasOne(a => a.Teacher)
+                .WithMany()
+                .HasForeignKey(a => a.TeacherId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<AssignmentSubmission>()
+                .HasOne(s => s.Assignment)
+                .WithMany(a => a.Submissions)
+                .HasForeignKey(s => s.AssignmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<AssignmentSubmission>()
+                .HasOne(s => s.Student)
+                .WithMany()
+                .HasForeignKey(s => s.StudentId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

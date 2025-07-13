@@ -4,6 +4,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
+// Helper for date input formatting
+function toDateInputValue(date) {
+  if (!date || date === "0000-12-31" || date === "0001-01-01" || date === "0001-01-01T00:00:00" || date === "Invalid Date") return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
+}
+
 const TeacherManagementPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -16,10 +24,13 @@ const TeacherManagementPage = () => {
         firstName: '',
         lastName: '',
         email: '',
+        password: '',
         phoneNumber: '',
         specialization: '',
+        department: '',
         dateOfBirth: '',
-        userId: ''
+        hireDate: '',
+        address: '',
     });
 
     useEffect(() => {
@@ -39,18 +50,24 @@ const TeacherManagementPage = () => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: value ?? ""
         }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            // Prepare payload with ISO date strings or null
+            const payload = {
+                ...formData,
+                dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
+                hireDate: formData.hireDate ? new Date(formData.hireDate).toISOString() : null,
+            };
             if (selectedTeacher) {
-                await teacherService.updateTeacher(selectedTeacher.id, formData);
+                await teacherService.updateTeacher(selectedTeacher.id, payload);
                 toast.success('Teacher updated successfully');
             } else {
-                await teacherService.createTeacher(formData);
+                await teacherService.createTeacher(payload);
                 toast.success('Teacher created successfully');
             }
             setIsModalOpen(false);
@@ -75,13 +92,16 @@ const TeacherManagementPage = () => {
     const handleEdit = (teacher) => {
         setSelectedTeacher(teacher);
         setFormData({
-            firstName: teacher.firstName,
-            lastName: teacher.lastName,
-            email: teacher.email,
-            phoneNumber: teacher.phoneNumber,
-            specialization: teacher.specialization,
-            dateOfBirth: teacher.dateOfBirth,
-            userId: teacher.userId
+            firstName: teacher.firstName || "",
+            lastName: teacher.lastName || "",
+            email: teacher.email || "",
+            password: '',
+            phoneNumber: teacher.phoneNumber || "",
+            specialization: teacher.specialization || "",
+            department: teacher.department || "",
+            dateOfBirth: toDateInputValue(teacher.dateOfBirth),
+            hireDate: toDateInputValue(teacher.hireDate),
+            address: teacher.address || "",
         });
         setIsModalOpen(true);
     };
@@ -117,10 +137,13 @@ const TeacherManagementPage = () => {
                             firstName: '',
                             lastName: '',
                             email: '',
+                            password: '',
                             phoneNumber: '',
                             specialization: '',
+                            department: '',
                             dateOfBirth: '',
-                            userId: ''
+                            hireDate: '',
+                            address: '',
                         });
                         setIsModalOpen(true);
                     }}
@@ -205,85 +228,18 @@ const TeacherManagementPage = () => {
                             <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">
                                 {selectedTeacher ? 'Edit Teacher' : 'Add New Teacher'}
                             </h3>
-                            <form onSubmit={handleSubmit}>
-                                <div className="mb-4">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">First Name</label>
-                                    <input
-                                        type="text"
-                                        name="firstName"
-                                        value={formData.firstName}
-                                        onChange={handleInputChange}
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        required
-                                    />
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Last Name</label>
-                                    <input
-                                        type="text"
-                                        name="lastName"
-                                        value={formData.lastName}
-                                        onChange={handleInputChange}
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        required
-                                    />
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Email</label>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleInputChange}
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                        required
-                                    />
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Phone Number</label>
-                                    <input
-                                        type="tel"
-                                        name="phoneNumber"
-                                        value={formData.phoneNumber}
-                                        onChange={handleInputChange}
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    />
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Specialization</label>
-                                    <input
-                                        type="text"
-                                        name="specialization"
-                                        value={formData.specialization}
-                                        onChange={handleInputChange}
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    />
-                                </div>
-                                <div className="mb-4">
-                                    <label className="block text-gray-700 text-sm font-bold mb-2">Date of Birth</label>
-                                    <input
-                                        type="date"
-                                        name="dateOfBirth"
-                                        value={formData.dateOfBirth}
-                                        onChange={handleInputChange}
-                                        className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                                    />
-                                </div>
-                                <div className="flex justify-end gap-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsModalOpen(false)}
-                                        className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                                    >
-                                        {selectedTeacher ? 'Update' : 'Create'}
-                                    </button>
-                                </div>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <input name="firstName" value={formData.firstName || ""} onChange={handleInputChange} placeholder="First Name" required className="input" />
+                                <input name="lastName" value={formData.lastName || ""} onChange={handleInputChange} placeholder="Last Name" required className="input" />
+                                <input name="email" value={formData.email || ""} onChange={handleInputChange} placeholder="Email" type="email" required className="input" />
+                                <input name="password" value={formData.password || ""} onChange={handleInputChange} placeholder="Password" type="password" required className="input" />
+                                <input name="phoneNumber" value={formData.phoneNumber || ""} onChange={handleInputChange} placeholder="Phone Number" className="input" />
+                                <input name="specialization" value={formData.specialization || ""} onChange={handleInputChange} placeholder="Specialization" className="input" />
+                                <input name="department" value={formData.department || ""} onChange={handleInputChange} placeholder="Department" className="input" />
+                                <input name="dateOfBirth" value={formData.dateOfBirth || ""} onChange={handleInputChange} placeholder="Date of Birth" type="date" required className="input" />
+                                <input name="hireDate" value={formData.hireDate || ""} onChange={handleInputChange} placeholder="Hire Date" type="date" required className="input" />
+                                <input name="address" value={formData.address || ""} onChange={handleInputChange} placeholder="Address" className="input" />
+                                <button type="submit" className="btn btn-primary">{selectedTeacher ? 'Update' : 'Create'}</button>
                             </form>
                         </div>
                     </div>
@@ -310,11 +266,9 @@ const TeacherManagementPage = () => {
                                         </button>
                                     </div>
                                 ))}
-                            </div>
-                            <div className="mt-4 flex justify-end">
                                 <button
                                     onClick={() => setIsCourseModalOpen(false)}
-                                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                                    className="mt-4 btn btn-secondary"
                                 >
                                     Close
                                 </button>

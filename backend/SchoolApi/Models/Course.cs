@@ -32,16 +32,19 @@ namespace SchoolApi.Models
         public DateTime? UpdatedAt { get; set; }
 
         // Navigation properties
-        public virtual ICollection<StudentCourse> StudentCourses { get; set; }
-        public virtual ICollection<Grade> Grades { get; set; }
-        public virtual ICollection<Attendance> Attendances { get; set; }
-        public virtual ICollection<TeacherCourse> TeacherCourses { get; set; } // New navigation property for TeacherCourses
+        public virtual ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+        public virtual ICollection<TeacherCourse> TeacherCourses { get; set; } = new List<TeacherCourse>();
+        public virtual ICollection<Grade> Grades { get; set; } = new List<Grade>();
+        public virtual ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
+
+        // New navigation property for TeacherCourses
+
+        [NotMapped]
+        public ICollection<Enrollment> StudentCourses => Enrollments;
 
         public Course()
         {
-            StudentCourses = new HashSet<StudentCourse>();
-            Grades = new HashSet<Grade>();
-            Attendances = new HashSet<Attendance>();
+            Enrollments = new HashSet<Enrollment>();
             TeacherCourses = new HashSet<TeacherCourse>(); // Initialize the new collection
         }
     }

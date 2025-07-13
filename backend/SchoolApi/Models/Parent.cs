@@ -29,6 +29,8 @@ namespace SchoolApi.Models
 
         // Navigation properties
         public ApplicationUser? User { get; set; }
-        public ICollection<Student> Students { get; set; } = new List<Student>();
+        public ICollection<ParentChild> ChildLinks { get; set; } = new List<ParentChild>();
+        [NotMapped]
+        public ICollection<Student> Students => ChildLinks.Select(cl => cl.Student).ToList();
     }
 }

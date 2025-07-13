@@ -1,51 +1,122 @@
-import React from 'react';
-import { useAuth } from '../context/AuthContext';
+import React, { useEffect, useState } from 'react';
+import { useProfileData } from '../hooks/useProfileData';
+import teacherService from '../services/teacherService';
+import { toast } from 'react-toastify';
 
 function AttendancePage() {
-    const { auth } = useAuth(); // Get auth context to check roles
+    const { data: teacher, loading, error } = useProfileData('/Teachers/me');
+    const [selectedCourseId, setSelectedCourseId] = useState('');
+    const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+    const [students, setStudents] = useState([]);
+    const [attendance, setAttendance] = useState({});
+    const [saving, setSaving] = useState(false);
+    const [fetching, setFetching] = useState(false);
 
-    const renderContent = () => {
-        if (auth.roles.includes('Admin')) {
-            return (
-                <>
-                    <h2 className="text-xl font-semibold mb-4 text-gray-800">Attendance Records (Admin View)</h2>
-                    <p className="text-gray-700">Display all attendance records with full management capabilities.</p>
-                    {/* TODO: Implement Admin-specific attendance management UI */}
-                </>
-            );
-        } else if (auth.roles.includes('Teacher')) {
-            return (
-                <>
-                    <h2 className="text-xl font-semibold mb-4 text-gray-800">Mark Attendance (Teacher View)</h2>
-                    <p className="text-gray-700">Mark attendance for your assigned courses and students.</p>
-                    {/* TODO: Implement Teacher-specific attendance marking UI */}
-                </>
-            );
-        } else if (auth.roles.includes('Student')) {
-            return (
-                <>
-                    <h2 className="text-xl font-semibold mb-4 text-gray-800">My Attendance Records (Student View)</h2>
-                    <p className="text-gray-700">Display the logged-in student's attendance history.</p>
-                    {/* TODO: Implement Student's own attendance view UI */}
-                </>
-            );
-        } else if (auth.roles.includes('Parent')) {
-            return (
-                <>
-                    <h2 className="text-xl font-semibold mb-4 text-gray-800">Child's Attendance (Parent View)</h2>
-                    <p className="text-gray-700">Display attendance records for your children.</p>
-                    {/* TODO: Implement Parent's child attendance view UI */}
-                </>
-            );
+    useEffect(() => {
+        if (selectedCourseId) {
+            fetchStudents(selectedCourseId);
         } else {
-            return <p className="text-red-600">Access denied or role not recognized.</p>;
+            setStudents([]);
+            setAttendance({});
         }
+    }, [selectedCourseId]);
+
+    const fetchStudents = async (courseId) => {
+        setFetching(true);
+        try {
+            const res = await teacherService.getCourseStudents(courseId);
+            setStudents(res.students);
+            setAttendance({});
+        } catch (err) {
+            toast.error('Failed to fetch students');
+        }
+        setFetching(false);
     };
 
+    const handleToggle = (studentId) => {
+        setAttendance((prev) => ({ ...prev, [studentId]: !prev[studentId] }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            await teacherService.recordAttendance(selectedCourseId, date, attendance);
+            toast.success('Attendance recorded');
+        } catch (err) {
+            toast.error('Failed to record attendance');
+        }
+        setSaving(false);
+    };
+
+    if (loading) return <div className="text-center py-8">Loading...</div>;
+    if (error) return <div className="text-center text-red-500 py-8">{error}</div>;
+    if (!teacher) return <div className="text-center py-8 text-gray-500">No teacher data found.</div>;
+
     return (
-        <div className="p-6 bg-white rounded-lg shadow-md mt-4">
-            <h1 className="text-2xl font-bold mb-4 text-gray-800">Attendance Information</h1>
-            {renderContent()}
+        <div className="container mx-auto px-4 py-8">
+            <h1 className="text-2xl font-bold mb-6">Mark Attendance</h1>
+            <form onSubmit={handleSubmit} className="mb-6">
+                <div className="mb-4">
+                    <label className="block mb-2 font-semibold">Select Course:</label>
+                    <select
+                        className="input w-full max-w-xs"
+                        value={selectedCourseId}
+                        onChange={e => setSelectedCourseId(e.target.value)}
+                    >
+                        <option value="">-- Select a course --</option>
+                        {teacher.courses && teacher.courses.map(course => (
+                            <option key={course.id} value={course.id}>{course.name} ({course.code})</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="mb-4">
+                    <label className="block mb-2 font-semibold">Date:</label>
+                    <input
+                        type="date"
+                        className="input w-full max-w-xs"
+                        value={date}
+                        onChange={e => setDate(e.target.value)}
+                    />
+                </div>
+                {fetching ? (
+                    <div>Loading students...</div>
+                ) : selectedCourseId && students.length > 0 ? (
+                    <div className="overflow-x-auto mb-4">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Present</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {students.map(student => (
+                                    <tr key={student.id}>
+                                        <td className="px-6 py-4 whitespace-nowrap">{student.firstName} {student.lastName}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <input
+                                                type="checkbox"
+                                                checked={!!attendance[student.id]}
+                                                onChange={() => handleToggle(student.id)}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : selectedCourseId ? (
+                    <div className="text-gray-500">No students found for this course.</div>
+                ) : null}
+                <button
+                    type="submit"
+                    className="btn btn-primary mt-4"
+                    disabled={saving || !selectedCourseId || students.length === 0}
+                >
+                    {saving ? 'Saving...' : 'Save Attendance'}
+                </button>
+            </form>
         </div>
     );
 }

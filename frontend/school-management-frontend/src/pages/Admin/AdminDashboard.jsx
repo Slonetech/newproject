@@ -1,75 +1,138 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import axiosInstance from '../../api/axiosConfig';
 import { Link } from 'react-router-dom';
 
 const AdminDashboard = () => {
+    const [users, setUsers] = useState([]);
+    const [teachers, setTeachers] = useState([]);
+    const [students, setStudents] = useState([]);
+    const [parents, setParents] = useState([]);
+    const [courses, setCourses] = useState([]);
+    const [grades, setGrades] = useState([]);
+    const [attendances, setAttendances] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    const fetchData = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const [usersRes, teachersRes, studentsRes, parentsRes, coursesRes, gradesRes, attendancesRes] = await Promise.all([
+                axiosInstance.get('/api/Users'),
+                axiosInstance.get('/api/Teachers'),
+                axiosInstance.get('/api/Students'),
+                axiosInstance.get('/api/Parents'),
+                axiosInstance.get('/api/Courses'),
+                axiosInstance.get('/api/Grades'),
+                axiosInstance.get('/api/Attendances'),
+            ]);
+            setUsers(usersRes.data);
+            setTeachers(teachersRes.data);
+            setStudents(studentsRes.data);
+            setParents(parentsRes.data);
+            setCourses(coursesRes.data);
+            setGrades(gradesRes.data);
+            setAttendances(attendancesRes.data);
+        } catch (err) {
+            setError('Failed to load admin dashboard data.');
+        }
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    // System statistics
+    const totalUsers = users.length;
+    const totalStudents = students.length;
+    const totalTeachers = teachers.length;
+    const totalParents = parents.length;
+    const totalCourses = courses.length;
+    const totalGrades = grades.length;
+    const totalAttendance = attendances.length;
+
+    // Recent activity (last 5 grades, attendance, users)
+    const recentGrades = [...grades].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+    const recentAttendance = [...attendances].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+    const recentUsers = [...users].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 5);
+
+    if (loading) return <div className="text-center py-20 text-sky-700">Loading admin dashboard...</div>;
+    if (error) return <div className="text-center py-20 text-red-600">{error}</div>;
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8 font-sans">
-            <div className="max-w-4xl w-full bg-white rounded-xl shadow-lg p-8 sm:p-10 transition-all duration-300 ease-in-out">
-                <h2 className="text-4xl font-extrabold text-gray-900 mb-6 text-center">Admin Control Panel</h2>
-                <p className="text-lg text-gray-700 mb-10 text-center leading-relaxed">
-                    Welcome, Administrator! This central hub provides quick access to manage users, school data, and generate reports.
-                </p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {/* User Management Card */}
-                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl p-6 sm:p-8 flex flex-col items-center justify-between shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out cursor-pointer">
-                        <div className="mb-4 text-5xl">
-                            <i className="fas fa-users"></i>
-                        </div>
-                        <h3 className="text-2xl font-bold mb-3 text-center">User Management</h3>
-                        <p className="text-center text-blue-100 mb-6 flex-grow">Create, view, update, and delete user accounts. Assign and remove roles with precision.</p>
-                        <Link
-                            to="/admin/users"
-                            className="w-full bg-white text-blue-700 font-semibold py-3 px-6 rounded-lg hover:bg-blue-100 transition duration-200 text-center shadow-md hover:shadow-lg"
-                        >
-                            Manage Users
-                        </Link>
+            <div className="max-w-6xl w-full bg-white rounded-xl shadow-lg p-8 sm:p-10 transition-all duration-300 ease-in-out">
+                <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-4xl font-extrabold text-gray-900">Admin Control Panel</h2>
+                    <button onClick={fetchData} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Refresh</button>
+                </div>
+                {/* System Overview Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                    <div className="bg-blue-100 rounded-lg p-6 flex flex-col items-center shadow">
+                        <div className="text-3xl font-bold text-blue-700">{totalUsers}</div>
+                        <div className="text-lg text-blue-900 font-semibold">Total Users</div>
                     </div>
-
-                    {/* Teacher Profiles Card */}
-                    <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl p-6 sm:p-8 flex flex-col items-center justify-between shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out cursor-pointer">
-                        <div className="mb-4 text-5xl">
-                            <i className="fas fa-chalkboard-teacher"></i>
-                        </div>
-                        <h3 className="text-2xl font-bold mb-3 text-center">Teacher Profiles</h3>
-                        <p className="text-center text-indigo-100 mb-6 flex-grow">Maintain detailed teacher profiles, including departments and linked user accounts.</p>
-                        <Link
-                            to="/admin/teachers"
-                            className="w-full bg-white text-indigo-700 font-semibold py-3 px-6 rounded-lg hover:bg-indigo-100 transition duration-200 text-center shadow-md hover:shadow-lg"
-                        >
-                            Manage Teachers
-                        </Link>
+                    <div className="bg-green-100 rounded-lg p-6 flex flex-col items-center shadow">
+                        <div className="text-3xl font-bold text-green-700">{totalStudents}</div>
+                        <div className="text-lg text-green-900 font-semibold">Students</div>
                     </div>
-
-                    {/* Parent Profiles Card */}
-                    <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl p-6 sm:p-8 flex flex-col items-center justify-between shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out cursor-pointer">
-                        <div className="mb-4 text-5xl">
-                            <i className="fas fa-user-friends"></i>
-                        </div>
-                        <h3 className="text-2xl font-bold mb-3 text-center">Parent Profiles</h3>
-                        <p className="text-center text-purple-100 mb-6 flex-grow">Manage parent accounts and their association with student children for easy monitoring.</p>
-                        <Link
-                            to="/admin/parents"
-                            className="w-full bg-white text-purple-700 font-semibold py-3 px-6 rounded-lg hover:bg-purple-100 transition duration-200 text-center shadow-md hover:shadow-lg"
-                        >
-                            Manage Parents
-                        </Link>
+                    <div className="bg-indigo-100 rounded-lg p-6 flex flex-col items-center shadow">
+                        <div className="text-3xl font-bold text-indigo-700">{totalTeachers}</div>
+                        <div className="text-lg text-indigo-900 font-semibold">Teachers</div>
                     </div>
-
-                    {/* System Settings Card */}
-                    <div className="bg-gradient-to-br from-gray-700 to-gray-800 text-white rounded-xl p-6 sm:p-8 flex flex-col items-center justify-between shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 ease-in-out cursor-pointer">
-                        <div className="mb-4 text-5xl">
-                            <i className="fas fa-cog"></i>
-                        </div>
-                        <h3 className="text-2xl font-bold mb-3 text-center">System Settings</h3>
-                        <p className="text-center text-gray-300 mb-6 flex-grow">Configure global system settings, academic years, and other administrative parameters.</p>
-                        <Link
-                            to="/admin/settings"
-                            className="w-full bg-white text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-100 transition duration-200 text-center shadow-md hover:shadow-lg"
-                        >
-                            Configure Settings
-                        </Link>
+                    <div className="bg-purple-100 rounded-lg p-6 flex flex-col items-center shadow">
+                        <div className="text-3xl font-bold text-purple-700">{totalParents}</div>
+                        <div className="text-lg text-purple-900 font-semibold">Parents</div>
                     </div>
+                    <div className="bg-yellow-100 rounded-lg p-6 flex flex-col items-center shadow">
+                        <div className="text-3xl font-bold text-yellow-700">{totalCourses}</div>
+                        <div className="text-lg text-yellow-900 font-semibold">Courses</div>
+                    </div>
+                    <div className="bg-pink-100 rounded-lg p-6 flex flex-col items-center shadow">
+                        <div className="text-3xl font-bold text-pink-700">{totalGrades}</div>
+                        <div className="text-lg text-pink-900 font-semibold">Grades Recorded</div>
+                    </div>
+                </div>
+                {/* User Management Widget */}
+                <div className="mb-10">
+                    <h3 className="text-2xl font-bold mb-4">User Management</h3>
+                    <div className="flex flex-wrap gap-4 mb-4">
+                        <Link to="/admin/users" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Manage Users</Link>
+                        <Link to="/admin/teachers" className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600">Manage Teachers</Link>
+                        <Link to="/admin/parents" className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">Manage Parents</Link>
+                        <Link to="/admin/courses" className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Manage Courses</Link>
+                    </div>
+                    <div className="text-gray-700">Recent Registrations:</div>
+                    <ul className="list-disc ml-6 mt-2">
+                        {recentUsers.map(u => (
+                            <li key={u.id}>{u.firstName} {u.lastName} ({u.email}) - Roles: {u.roles?.join(', ')}</li>
+                        ))}
+                    </ul>
+                </div>
+                {/* Course Management Widget */}
+                <div className="mb-10">
+                    <h3 className="text-2xl font-bold mb-4">Course Management</h3>
+                    <div className="text-gray-700 mb-2">Active Courses: {totalCourses}</div>
+                    <div className="text-gray-700 mb-2">Popular Courses: {courses.slice(0, 3).map(c => c.name).join(', ')}</div>
+                    <div className="text-gray-700 mb-2">Recent Course Activities:</div>
+                    <ul className="list-disc ml-6 mt-2">
+                        {grades.slice(0, 5).map(g => (
+                            <li key={g.id}>Grade: {g.value} for Student {g.studentId} in Course {g.courseId}</li>
+                        ))}
+                    </ul>
+                </div>
+                {/* Activity Feed */}
+                <div className="mb-10">
+                    <h3 className="text-2xl font-bold mb-4">Recent Activity Feed</h3>
+                    <ul className="list-disc ml-6">
+                        {recentGrades.map(g => (
+                            <li key={g.id}>Grade {g.value} entered for Student {g.studentId} in Course {g.courseId} ({g.date && new Date(g.date).toLocaleString()})</li>
+                        ))}
+                        {recentAttendance.map(a => (
+                            <li key={a.id}>Attendance for Student {a.studentId} in Course {a.courseId}: {a.isPresent ? 'Present' : 'Absent'} ({a.date && new Date(a.date).toLocaleString()})</li>
+                        ))}
+                    </ul>
                 </div>
             </div>
         </div>

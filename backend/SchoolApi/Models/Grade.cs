@@ -11,9 +11,11 @@ namespace SchoolApi.Models
 
         [Required]
         public Guid StudentId { get; set; }
+        public Student Student { get; set; } = null!;
 
         [Required]
         public Guid CourseId { get; set; }
+        public Course Course { get; set; } = null!;
 
         [Required]
         [Range(0, 100)]
@@ -26,10 +28,10 @@ namespace SchoolApi.Models
         public string? Comments { get; set; }
 
         // Navigation properties
-        [ForeignKey("StudentId")]
-        public Student? Student { get; set; }
+        // [ForeignKey("StudentId")] // This line is removed as per the new_code
+        // public Student? Student { get; set; }
 
-        [ForeignKey("CourseId")]
-        public Course? Course { get; set; }
+        // [ForeignKey("CourseId")] // This line is removed as per the new_code
+        // public Course? Course { get; set; }
     }
 }

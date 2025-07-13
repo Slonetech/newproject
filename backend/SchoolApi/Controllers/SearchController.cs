@@ -34,8 +34,8 @@ namespace SchoolApi.Controllers
             [FromQuery] string? teacher) // This will now search for a teacher associated with a course
         {
             var students = _context.Students
-                .Include(s => s.StudentCourses)
-                    .ThenInclude(sc => sc.Course)
+                .Include(s => s.Enrollments)
+                    .ThenInclude(e => e.Course)
                         .ThenInclude(c => c.TeacherCourses) // Include TeacherCourses for the course
                             .ThenInclude(tc => tc.Teacher) // Then include the Teacher
                 .Where(s => s.IsActive) // Only active students
@@ -59,13 +59,13 @@ namespace SchoolApi.Controllers
 
             if (!string.IsNullOrWhiteSpace(course))
             {
-                students = students.Where(s => s.StudentCourses.Any(sc => sc.Course.Name.Contains(course)));
+                students = students.Where(s => s.Enrollments.Any(e => e.Course.Name.Contains(course)));
             }
 
             if (!string.IsNullOrWhiteSpace(teacher))
             {
-                students = students.Where(s => s.StudentCourses.Any(sc =>
-                    sc.Course.TeacherCourses.Any(tc =>
+                students = students.Where(s => s.Enrollments.Any(e =>
+                    e.Course.TeacherCourses.Any(tc =>
                         tc.Teacher.FirstName.Contains(teacher) || tc.Teacher.LastName.Contains(teacher)
                     )
                 ));
@@ -95,12 +95,12 @@ namespace SchoolApi.Controllers
                 LastName = s.LastName,
                 Email = s.Email,
                 Grade = s.Grade,
-                Courses = s.StudentCourses.Select(sc => new CourseInfo
+                Courses = s.Enrollments.Select(e => new CourseInfo
                 {
-                    Id = sc.Course.Id,
-                    Title = sc.Course.Name,
+                    Id = e.Course.Id,
+                    Title = e.Course.Name,
                     // Now, get teacher names from the TeacherCourses collection
-                    TeacherNames = sc.Course.TeacherCourses
+                    TeacherNames = e.Course.TeacherCourses
                                         .Select(tc => $"{tc.Teacher.FirstName} {tc.Teacher.LastName}")
                                         .ToList()
                 }).ToList()
@@ -126,8 +126,8 @@ namespace SchoolApi.Controllers
                 .Include(c => c.TeacherCourses) // Include the join table
                     .ThenInclude(tc => tc.Teacher) // Then the Teacher
                 .Include(c => c.Attendances)
-                .Include(c => c.StudentCourses)
-                    .ThenInclude(sc => sc.Student)
+                .Include(c => c.Enrollments)
+                    .ThenInclude(e => e.Student)
                 .Where(c => c.IsActive) // Only active courses
                 .AsQueryable();
 
@@ -169,8 +169,8 @@ namespace SchoolApi.Controllers
                         ? courses.OrderByDescending(c => c.TeacherCourses.Any() ? c.TeacherCourses.Select(tc => tc.Teacher.LastName).FirstOrDefault() : string.Empty)
                         : courses.OrderBy(c => c.TeacherCourses.Any() ? c.TeacherCourses.Select(tc => tc.Teacher.LastName).FirstOrDefault() : string.Empty),
                     "students" => sortOrder?.ToLower() == "desc"
-                        ? courses.OrderByDescending(c => c.StudentCourses.Count)
-                        : courses.OrderBy(c => c.StudentCourses.Count),
+                        ? courses.OrderByDescending(c => c.Enrollments.Count)
+                        : courses.OrderBy(c => c.Enrollments.Count),
                     _ => courses
                 };
             }
@@ -185,7 +185,7 @@ namespace SchoolApi.Controllers
                 TeacherNames = c.TeacherCourses
                                 .Select(tc => $"{tc.Teacher.FirstName} {tc.Teacher.LastName}")
                                 .ToList(),
-                StudentCount = c.StudentCourses.Count,
+                StudentCount = c.Enrollments.Count,
                 HasAttendance = c.Attendances.Any()
             }).ToListAsync();
 

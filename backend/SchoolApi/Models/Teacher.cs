@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 
 namespace SchoolApi.Models
 {
@@ -50,6 +51,7 @@ namespace SchoolApi.Models
 
         // Navigation property for TeacherCourses (the many-to-many intermediary)
         public virtual ICollection<TeacherCourse> TeacherCourses { get; set; }
+        public virtual ICollection<Grade> Grades { get; set; } = new List<Grade>();
 
         public Teacher()
         {

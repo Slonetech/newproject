@@ -19,11 +19,14 @@ import AdminDashboard from './pages/Admin/AdminDashboard';
 import UserManagementPage from './pages/Admin/UserManagementPage';
 import TeacherManagementPage from './pages/Admin/TeacherManagementPage';
 import ParentManagementPage from './pages/Admin/ParentManagementPage';
+import CourseManagementPage from './pages/Admin/CourseManagementPage';
 
 // Role-Specific Dashboards (ensure these components exist)
 import TeacherDashboard from './pages/Teacher/TeacherDashboard';
 import StudentDashboard from './pages/Student/StudentDashboard';
 import ParentDashboard from './pages/Parent/ParentDashboard';
+import TeacherCoursesPage from './pages/Teacher/TeacherCoursesPage';
+import StudentCoursesPage from './pages/Student/StudentCoursesPage';
 
 // You might need these for general content or specific role access
 // const CoursesPage = () => <div>Courses Content</div>;
@@ -74,6 +77,11 @@ function App() {
                 <ParentManagementPage />
               </ProtectedRoute>
             } />
+            <Route path="/admin/courses" element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <CourseManagementPage />
+              </ProtectedRoute>
+            } />
 
             {/* Role-Specific Dashboard Routes - Protected for their respective roles */}
             <Route path="/teacher" element={
@@ -89,6 +97,16 @@ function App() {
             <Route path="/parent" element={
               <ProtectedRoute allowedRoles={['Parent']}>
                 <ParentDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/teacher/courses" element={
+              <ProtectedRoute allowedRoles={['Teacher']}>
+                <TeacherCoursesPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/courses" element={
+              <ProtectedRoute allowedRoles={['Student']}>
+                <StudentCoursesPage />
               </ProtectedRoute>
             } />
 

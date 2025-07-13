@@ -22,6 +22,30 @@ namespace SchoolApi.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Enrollment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("EnrolledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("StudentId", "CourseId");
+
+                    b.HasIndex("CourseId");
+
+                    b.ToTable("Enrollments");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -352,9 +376,9 @@ namespace SchoolApi.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("f15e7079-b6f5-4e9e-9263-ffc7c607b023"),
+                            Id = new Guid("2149ec59-4fb8-4c94-aac7-476ad92ecb3d"),
                             Code = "MATH101",
-                            CreatedAt = new DateTime(2025, 6, 18, 13, 43, 1, 331, DateTimeKind.Utc).AddTicks(6573),
+                            CreatedAt = new DateTime(2025, 7, 8, 9, 56, 39, 86, DateTimeKind.Utc).AddTicks(2846),
                             Credits = 3,
                             Description = "Introduction to basic mathematics concepts",
                             IsActive = true,
@@ -362,9 +386,9 @@ namespace SchoolApi.Migrations
                         },
                         new
                         {
-                            Id = new Guid("ca1bd0e0-6584-4456-87a7-fbd3eaaaf2ff"),
+                            Id = new Guid("1f0cc015-f2fd-4ada-a839-a6a8fa786809"),
                             Code = "SCI101",
-                            CreatedAt = new DateTime(2025, 6, 18, 13, 43, 1, 331, DateTimeKind.Utc).AddTicks(6736),
+                            CreatedAt = new DateTime(2025, 7, 8, 9, 56, 39, 86, DateTimeKind.Utc).AddTicks(2999),
                             Credits = 3,
                             Description = "Introduction to scientific principles",
                             IsActive = true,
@@ -372,23 +396,13 @@ namespace SchoolApi.Migrations
                         },
                         new
                         {
-                            Id = new Guid("a3aac67d-2789-44da-8743-04e08369933a"),
+                            Id = new Guid("f603d8b7-72f5-427a-9bec-cb5e58d6949e"),
                             Code = "ENG101",
-                            CreatedAt = new DateTime(2025, 6, 18, 13, 43, 1, 331, DateTimeKind.Utc).AddTicks(6739),
+                            CreatedAt = new DateTime(2025, 7, 8, 9, 56, 39, 86, DateTimeKind.Utc).AddTicks(3002),
                             Credits = 3,
                             Description = "English language and literature",
                             IsActive = true,
                             Name = "English Language"
-                        },
-                        new
-                        {
-                            Id = new Guid("45d6159c-66d2-487b-941d-058540ca354d"),
-                            Code = "SOC101",
-                            CreatedAt = new DateTime(2025, 6, 18, 13, 43, 1, 331, DateTimeKind.Utc).AddTicks(6748),
-                            Credits = 3,
-                            Description = "Introduction to social sciences",
-                            IsActive = true,
-                            Name = "Social Studies"
                         });
                 });
 
@@ -463,6 +477,9 @@ namespace SchoolApi.Migrations
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("TeacherId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<double>("Value")
                         .HasColumnType("float");
 
@@ -471,6 +488,8 @@ namespace SchoolApi.Migrations
                     b.HasIndex("CourseId");
 
                     b.HasIndex("StudentId");
+
+                    b.HasIndex("TeacherId");
 
                     b.ToTable("Grades");
                 });
@@ -502,9 +521,6 @@ namespace SchoolApi.Migrations
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid?>("StudentId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -514,12 +530,58 @@ namespace SchoolApi.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.HasIndex("StudentId");
-
                     b.HasIndex("UserId")
                         .IsUnique();
 
                     b.ToTable("Parents");
+                });
+
+            modelBuilder.Entity("SchoolApi.Models.ParentChild", b =>
+                {
+                    b.Property<Guid>("ParentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("ParentId", "StudentId");
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("ParentChildren");
+                });
+
+            modelBuilder.Entity("SchoolApi.Models.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("RevokedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("SchoolApi.Models.Student", b =>
@@ -558,9 +620,6 @@ namespace SchoolApi.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid?>("ParentId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -574,33 +633,10 @@ namespace SchoolApi.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.HasIndex("ParentId");
-
                     b.HasIndex("UserId")
                         .IsUnique();
 
                     b.ToTable("Students");
-                });
-
-            modelBuilder.Entity("SchoolApi.Models.StudentCourse", b =>
-                {
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("CourseId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("EnrollmentDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("StudentId", "CourseId");
-
-                    b.HasIndex("CourseId");
-
-                    b.ToTable("StudentCourses");
                 });
 
             modelBuilder.Entity("SchoolApi.Models.Teacher", b =>
@@ -687,6 +723,25 @@ namespace SchoolApi.Migrations
                     b.HasIndex("CourseId");
 
                     b.ToTable("TeacherCourses");
+                });
+
+            modelBuilder.Entity("Enrollment", b =>
+                {
+                    b.HasOne("SchoolApi.Models.Course", "Course")
+                        .WithMany("Enrollments")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SchoolApi.Models.Student", "Student")
+                        .WithMany("Enrollments")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -816,6 +871,10 @@ namespace SchoolApi.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("SchoolApi.Models.Teacher", null)
+                        .WithMany("Grades")
+                        .HasForeignKey("TeacherId");
+
                     b.Navigation("Course");
 
                     b.Navigation("Student");
@@ -823,10 +882,6 @@ namespace SchoolApi.Migrations
 
             modelBuilder.Entity("SchoolApi.Models.Parent", b =>
                 {
-                    b.HasOne("SchoolApi.Models.Student", null)
-                        .WithMany("Parents")
-                        .HasForeignKey("StudentId");
-
                     b.HasOne("SchoolApi.Models.ApplicationUser", "User")
                         .WithOne()
                         .HasForeignKey("SchoolApi.Models.Parent", "UserId")
@@ -836,41 +891,45 @@ namespace SchoolApi.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("SchoolApi.Models.Student", b =>
+            modelBuilder.Entity("SchoolApi.Models.ParentChild", b =>
                 {
                     b.HasOne("SchoolApi.Models.Parent", "Parent")
-                        .WithMany("Students")
+                        .WithMany("ChildLinks")
                         .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
+                    b.HasOne("SchoolApi.Models.Student", "Student")
+                        .WithMany("ParentLinks")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Parent");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("SchoolApi.Models.RefreshToken", b =>
+                {
+                    b.HasOne("SchoolApi.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SchoolApi.Models.Student", b =>
+                {
                     b.HasOne("SchoolApi.Models.ApplicationUser", "User")
                         .WithOne()
                         .HasForeignKey("SchoolApi.Models.Student", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Parent");
-
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("SchoolApi.Models.StudentCourse", b =>
-                {
-                    b.HasOne("SchoolApi.Models.Course", "Course")
-                        .WithMany("StudentCourses")
-                        .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("SchoolApi.Models.Student", "Student")
-                        .WithMany("StudentCourses")
-                        .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Course");
-
-                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("SchoolApi.Models.Teacher", b =>
@@ -907,31 +966,33 @@ namespace SchoolApi.Migrations
                 {
                     b.Navigation("Attendances");
 
-                    b.Navigation("Grades");
+                    b.Navigation("Enrollments");
 
-                    b.Navigation("StudentCourses");
+                    b.Navigation("Grades");
 
                     b.Navigation("TeacherCourses");
                 });
 
             modelBuilder.Entity("SchoolApi.Models.Parent", b =>
                 {
-                    b.Navigation("Students");
+                    b.Navigation("ChildLinks");
                 });
 
             modelBuilder.Entity("SchoolApi.Models.Student", b =>
                 {
                     b.Navigation("Attendances");
 
+                    b.Navigation("Enrollments");
+
                     b.Navigation("Grades");
 
-                    b.Navigation("Parents");
-
-                    b.Navigation("StudentCourses");
+                    b.Navigation("ParentLinks");
                 });
 
             modelBuilder.Entity("SchoolApi.Models.Teacher", b =>
                 {
+                    b.Navigation("Grades");
+
                     b.Navigation("TeacherCourses");
                 });
 #pragma warning restore 612, 618

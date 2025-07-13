@@ -1,6 +1,7 @@
 import axiosInstance from '../api/axiosConfig'; // Use the configured axios instance
 
 const API_ADMIN_PATH = '/api/Users'; // Add /api prefix
+const API_COURSE_PATH = '/api/Courses';
 
 const adminService = {
     // Get all users
@@ -110,6 +111,77 @@ const adminService = {
             return response.data;
         } catch (error) {
             console.error(`Error linking student profile for user ${userId}:`, error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    // Course Management
+    getCourses: async () => {
+        try {
+            const response = await axiosInstance.get(API_COURSE_PATH);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching courses:', error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    createCourse: async (courseData) => {
+        try {
+            const response = await axiosInstance.post(API_COURSE_PATH, courseData);
+            return response.data;
+        } catch (error) {
+            console.error('Error creating course:', error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    updateCourse: async (id, courseData) => {
+        try {
+            const response = await axiosInstance.put(`${API_COURSE_PATH}/${id}`, courseData);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating course:', error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    deleteCourse: async (id) => {
+        try {
+            const response = await axiosInstance.delete(`${API_COURSE_PATH}/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error deleting course:', error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    assignTeacher: async (courseId, teacherId) => {
+        try {
+            const response = await axiosInstance.post(`${API_COURSE_PATH}/${courseId}/assign-teacher`, { teacherId });
+            return response.data;
+        } catch (error) {
+            console.error('Error assigning teacher:', error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    enrollStudent: async (courseId, studentId) => {
+        try {
+            const response = await axiosInstance.post(`${API_COURSE_PATH}/${courseId}/enroll-student`, { studentId });
+            return response.data;
+        } catch (error) {
+            console.error('Error enrolling student:', error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    getAllStudents: async () => {
+        try {
+            const response = await axiosInstance.get('/api/Students');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching students:', error.response?.data || error.message);
             throw error;
         }
     }

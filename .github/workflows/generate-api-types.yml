@@ -1,0 +1,60 @@
+name: Generate API Types
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore and build backend
+        run: |
+          dotnet restore ./backend/SchoolApi/SchoolApi.csproj
+          dotnet build ./backend/SchoolApi/SchoolApi.csproj --configuration Release
+      - name: Run backend in background
+        run: |
+          nohup dotnet run --urls "http://localhost:5248" --project ./backend/SchoolApi/SchoolApi.csproj &
+          sleep 15 # Wait for backend to start
+      - name: Upload Swagger JSON
+        run: |
+          curl -o swagger.json http://localhost:5248/swagger/v1/swagger.json
+      - name: Upload Swagger artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: swagger-json
+          path: swagger.json
+
+  generate-types:
+    needs: build-backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Download Swagger artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: swagger-json
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install openapi-typescript
+        run: npm install --save-dev openapi-typescript
+      - name: Generate TypeScript types
+        run: npx openapi-typescript swagger.json -o src/types/api.d.ts
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/types/api.d.ts
+          git commit -m "chore(types): update API types from OpenAPI spec [skip ci]" || echo "No changes to commit"
+          git push || echo "No changes to push"

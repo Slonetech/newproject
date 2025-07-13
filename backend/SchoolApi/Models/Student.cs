@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 
 namespace SchoolApi.Models
 {
@@ -37,18 +38,20 @@ namespace SchoolApi.Models
 
         public DateTime? DateOfBirth { get; set; }
 
-        public Guid? ParentId { get; set; }
-
         public DateTime EnrollmentDate { get; set; } = DateTime.UtcNow;
 
         public bool IsActive { get; set; }
 
         // Navigation properties
         public ApplicationUser? User { get; set; }
-        public Parent? Parent { get; set; }
-        public ICollection<StudentCourse> StudentCourses { get; set; } = new List<StudentCourse>();
+        public ICollection<ParentChild> ParentLinks { get; set; } = new List<ParentChild>();
         public ICollection<Grade> Grades { get; set; } = new List<Grade>();
         public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
-        public List<Parent> Parents { get; set; } = new();
+        public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+        [NotMapped]
+        public ICollection<Parent> Parents => ParentLinks.Select(pl => pl.Parent).ToList();
+        // For compatibility with legacy code, alias StudentCourses to Enrollments
+        [NotMapped]
+        public ICollection<Enrollment> StudentCourses => Enrollments;
     }
 }

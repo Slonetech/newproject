@@ -12,6 +12,7 @@ namespace SchoolApi.Services
         Task SendGradeNotificationAsync(string toEmail, string studentFirstName, string studentLastName, string courseTitle, double gradeValue, DateTime date);
         Task SendAttendanceNotificationAsync(string toEmail, string studentFirstName, string studentLastName, string courseTitle, bool isPresent, DateTime date);
         Task SendPasswordResetAsync(string to, string resetLink);
+        Task SendAssignmentNotificationAsync(string toEmail, string studentFirstName, string studentLastName, string assignmentTitle, string courseName, DateTime dueDate);
     }
 
     public class EmailService : IEmailService
@@ -92,6 +93,25 @@ namespace SchoolApi.Services
                 <p>If you did not request this reset, please ignore this email.</p>";
 
             await SendEmailAsync(to, subject, htmlContent);
+        }
+
+        public async Task SendAssignmentNotificationAsync(string toEmail, string studentFirstName, string studentLastName, string assignmentTitle, string courseName, DateTime dueDate)
+        {
+            var subject = $"New Assignment: {assignmentTitle}";
+            var htmlContent = $@"
+                <h2>New Assignment Posted</h2>
+                <p>Hello {studentFirstName} {studentLastName},</p>
+                <p>A new assignment has been posted for your course <strong>{courseName}</strong>.</p>
+                <h3>Assignment Details:</h3>
+                <ul>
+                    <li><strong>Title:</strong> {assignmentTitle}</li>
+                    <li><strong>Course:</strong> {courseName}</li>
+                    <li><strong>Due Date:</strong> {dueDate:MMM dd, yyyy 'at' HH:mm}</li>
+                </ul>
+                <p>Please log into your student portal to view the full assignment details and submit your work.</p>
+                <p>Good luck with your assignment!</p>";
+
+            await SendEmailAsync(toEmail, subject, htmlContent);
         }
     }
 }

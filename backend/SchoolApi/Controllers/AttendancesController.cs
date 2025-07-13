@@ -6,6 +6,7 @@ using SchoolApi.Models;
 using SchoolApi.Services;
 using System;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace SchoolApi.Controllers
 {
@@ -73,7 +74,7 @@ namespace SchoolApi.Controllers
         public async Task<ActionResult<Attendance>> CreateAttendance(Attendance attendance)
         {
             var student = await _context.Students
-                .Include(s => s.Parents)
+                .Include(s => s.ParentLinks)
                 .FirstOrDefaultAsync(s => s.Id == attendance.StudentId);
 
             if (student == null)
@@ -91,22 +92,27 @@ namespace SchoolApi.Controllers
             await _context.SaveChangesAsync();
 
             // Send email notification to parents
-            foreach (var parent in student.Parents)
+            var parentLinks = await _context.ParentChildren.Where(pc => pc.StudentId == student.Id).ToListAsync();
+            foreach (var link in parentLinks)
             {
-                try
+                var parent = await _context.Parents.FindAsync(link.ParentId);
+                if (parent != null)
                 {
-                    await _emailService.SendAttendanceNotificationAsync(
-                        parent.Email,
-                        student.FirstName,
-                        student.LastName,
-                        course.Name,
-                        attendance.IsPresent,
-                        attendance.Date
-                    );
-                }
-                catch (Exception)
-                {
-                    // Log the error but don't fail the request
+                    try
+                    {
+                        await _emailService.SendAttendanceNotificationAsync(
+                            parent.Email,
+                            student.FirstName,
+                            student.LastName,
+                            course.Name,
+                            attendance.IsPresent,
+                            attendance.Date
+                        );
+                    }
+                    catch (Exception)
+                    {
+                        // Log the error but don't fail the request
+                    }
                 }
             }
 
@@ -124,7 +130,7 @@ namespace SchoolApi.Controllers
 
             var existingAttendance = await _context.Attendances
                 .Include(a => a.Student)
-                .ThenInclude(s => s.Parents)
+                    .ThenInclude(s => s.ParentLinks)
                 .Include(a => a.Course)
                 .FirstOrDefaultAsync(a => a.Id == id);
 

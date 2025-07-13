@@ -6,6 +6,7 @@ using SchoolApi.Models;
 using SchoolApi.Services;
 using System;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace SchoolApi.Controllers
 {
@@ -71,7 +72,7 @@ namespace SchoolApi.Controllers
         public async Task<ActionResult<Grade>> CreateGrade(Grade grade)
         {
             var student = await _context.Students
-                .Include(s => s.Parents)
+                .Include(s => s.ParentLinks)
                 .FirstOrDefaultAsync(s => s.Id == grade.StudentId);
 
             if (student == null)
@@ -89,22 +90,27 @@ namespace SchoolApi.Controllers
             await _context.SaveChangesAsync();
 
             // Send email notification to parents
-            foreach (var parent in student.Parents)
+            var parentLinks = await _context.ParentChildren.Where(pc => pc.StudentId == student.Id).ToListAsync();
+            foreach (var link in parentLinks)
             {
-                try
+                var parent = await _context.Parents.FindAsync(link.ParentId);
+                if (parent != null)
                 {
-                    await _emailService.SendGradeNotificationAsync(
-                        parent.Email,
-                        student.FirstName,
-                        student.LastName,
-                        course.Name,
-                        grade.Value,
-                        grade.Date
-                    );
-                }
-                catch (Exception)
-                {
-                    // Log the error but don't fail the request
+                    try
+                    {
+                        await _emailService.SendGradeNotificationAsync(
+                            parent.Email,
+                            student.FirstName,
+                            student.LastName,
+                            course.Name,
+                            grade.Value,
+                            grade.Date
+                        );
+                    }
+                    catch (Exception)
+                    {
+                        // Log the error but don't fail the request
+                    }
                 }
             }
 
@@ -122,7 +128,7 @@ namespace SchoolApi.Controllers
 
             var existingGrade = await _context.Grades
                 .Include(g => g.Student)
-                .ThenInclude(s => s.Parents)
+                    .ThenInclude(s => s.ParentLinks)
                 .Include(g => g.Course)
                 .FirstOrDefaultAsync(g => g.Id == id);
 

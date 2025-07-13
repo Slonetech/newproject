@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "generate:types": "openapi-typescript http://localhost:5248/swagger/v1/swagger.json -o src/types/api.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.8.0"
+  }
+}

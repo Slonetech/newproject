@@ -132,6 +132,99 @@ namespace SchoolApi.Data
 
             // Save changes
             await context.SaveChangesAsync();
+
+            // Seed Teacher Profile
+            var teacherProfile = await context.Teachers.FirstOrDefaultAsync(t => t.UserId == teacherUser.Id);
+            if (teacherProfile == null)
+            {
+                teacherProfile = new Teacher
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = teacherUser.Id,
+                    FirstName = teacherUser.FirstName,
+                    LastName = teacherUser.LastName,
+                    Email = teacherUser.Email,
+                    PhoneNumber = "123-456-7890",
+                    Department = "Science",
+                    HireDate = DateTime.UtcNow,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                context.Teachers.Add(teacherProfile);
+            }
+
+            // Seed Student Profile
+            var studentProfile = await context.Students.FirstOrDefaultAsync(s => s.UserId == studentUser.Id);
+            if (studentProfile == null)
+            {
+                studentProfile = new Student
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = studentUser.Id,
+                    FirstName = studentUser.FirstName,
+                    LastName = studentUser.LastName,
+                    Email = studentUser.Email,
+                    Grade = 10,
+                    EnrollmentDate = DateTime.UtcNow,
+                    IsActive = true
+                };
+                context.Students.Add(studentProfile);
+            }
+
+            // Seed Parent Profile
+            var parentProfile = await context.Parents.FirstOrDefaultAsync(p => p.UserId == parentUser.Id);
+            if (parentProfile == null)
+            {
+                parentProfile = new Parent
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = parentUser.Id,
+                    FirstName = parentUser.FirstName,
+                    LastName = parentUser.LastName,
+                    Email = parentUser.Email,
+                    PhoneNumber = "555-555-5555",
+                    IsActive = true
+                };
+                context.Parents.Add(parentProfile);
+            }
+
+            await context.SaveChangesAsync();
+
+            // Seed ParentChild relationship
+            if (!await context.ParentChildren.AnyAsync(pc => pc.ParentId == parentProfile.Id && pc.StudentId == studentProfile.Id))
+            {
+                context.ParentChildren.Add(new ParentChild
+                {
+                    ParentId = parentProfile.Id,
+                    StudentId = studentProfile.Id
+                });
+            }
+
+            // Seed TeacherCourse (Assignment)
+            var course = await context.Courses.FirstOrDefaultAsync();
+            if (course != null && !await context.Set<TeacherCourse>().AnyAsync(tc => tc.TeacherId == teacherProfile.Id && tc.CourseId == course.Id))
+            {
+                context.Set<TeacherCourse>().Add(new TeacherCourse
+                {
+                    TeacherId = teacherProfile.Id,
+                    CourseId = course.Id,
+                    AssignmentDate = DateTime.UtcNow
+                });
+            }
+
+            // Seed Enrollment
+            if (course != null && !await context.Enrollments.AnyAsync(e => e.StudentId == studentProfile.Id && e.CourseId == course.Id))
+            {
+                context.Enrollments.Add(new Enrollment
+                {
+                    Id = Guid.NewGuid(),
+                    StudentId = studentProfile.Id,
+                    CourseId = course.Id,
+                    EnrolledAt = DateTime.UtcNow
+                });
+            }
+
+            await context.SaveChangesAsync();
         }
     }
 }

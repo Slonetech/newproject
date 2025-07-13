@@ -10,9 +10,11 @@ namespace SchoolApi.Models
 
         [Required]
         public Guid StudentId { get; set; }
+        public Student Student { get; set; } = null!;
 
         [Required]
         public Guid CourseId { get; set; }
+        public Course Course { get; set; } = null!;
 
         [Required]
         public DateTime Date { get; set; } = DateTime.UtcNow;
@@ -24,10 +26,10 @@ namespace SchoolApi.Models
         public string? Comments { get; set; }
 
         // Navigation properties
-        [ForeignKey("StudentId")]
-        public Student? Student { get; set; }
+        // [ForeignKey("StudentId")] // This line is removed as per the edit hint
+        // public Student? Student { get; set; }
 
-        [ForeignKey("CourseId")]
-        public Course? Course { get; set; }
+        // [ForeignKey("CourseId")] // This line is removed as per the edit hint
+        // public Course? Course { get; set; }
     }
 }
