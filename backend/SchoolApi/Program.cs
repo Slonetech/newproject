@@ -83,6 +83,9 @@ builder.Services.AddSwaggerGen(options =>
     {
         options.IncludeXmlComments(xmlPath);
     }
+
+    // Fix schema conflicts by using full type name as schema ID
+    options.CustomSchemaIds(type => type.FullName);
 });
 
 // Configure CORS
