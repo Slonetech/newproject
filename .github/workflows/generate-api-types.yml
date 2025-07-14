@@ -22,7 +22,7 @@ jobs:
           dotnet build ./backend/SchoolApi/SchoolApi.csproj --configuration Release
       - name: Run backend in background
         run: |
-          nohup dotnet run --urls "http://localhost:5248" --project ./backend/SchoolApi/SchoolApi.csproj &
+          nohup dotnet run --urls "http://localhost:5248" --project ./backend/SchoolApi/SchoolApi.csproj > backend.log 2>&1 &
       - name: Wait for backend to be ready
         run: |
           for i in {1..30}; do
@@ -33,9 +33,11 @@ jobs:
             echo "Waiting for backend... ($i/30)"
             sleep 2
           done
+      - name: List running dotnet processes
+        run: ps aux | grep dotnet
       - name: Upload Swagger JSON
         run: |
-          curl -o swagger.json http://localhost:5248/swagger/v1/swagger.json
+          curl -o swagger.json http://localhost:5248/swagger/v1/swagger.json || (echo "=== BACKEND LOG ===" && cat backend.log && exit 1)
       - name: Upload Swagger artifact
         uses: actions/upload-artifact@v4
         with:
