@@ -28,7 +28,7 @@ jobs:
         run: |
           curl -o swagger.json http://localhost:5248/swagger/v1/swagger.json
       - name: Upload Swagger artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: swagger-json
           path: swagger.json
@@ -40,7 +40,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Download Swagger artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: swagger-json
       - name: Set up Node.js
