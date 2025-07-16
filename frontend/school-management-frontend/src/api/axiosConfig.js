@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { getToken, logout } from '../services/authService'; // Corrected import for getToken and logout
+import { getToken, getUser, logout } from '../services/authService'; // Corrected import for getToken, getUser, and logout
+import { handleApiError } from '../utils/errorHandler';
 
 // IMPORTANT: Update baseURL to match your backend port (e.g., http://localhost:5000 or https://localhost:5001)
 const axiosInstance = axios.create({
@@ -12,7 +13,13 @@ const axiosInstance = axios.create({
 // Request interceptor to add the JWT token to every outgoing request
 axiosInstance.interceptors.request.use(
     (config) => {
-        const token = getToken(); // Get token from localStorage using authService helper
+        const token = getToken();
+        // === API REQUEST DEBUG ===
+        console.log('=== API REQUEST DEBUG ===');
+        console.log('Request URL:', config.url);
+        console.log('Token being sent:', token);
+        console.log('User object:', getUser());
+        console.log('========================');
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
         }
@@ -26,17 +33,19 @@ axiosInstance.interceptors.request.use(
 // Response interceptor to handle token expiration/unauthorized responses
 axiosInstance.interceptors.response.use(
     (response) => response,
-    async (error) => {
-        const originalRequest = error.config;
-        // If the error is 401 Unauthorized and it's not the login request itself,
-        // and we haven't already retried this request
-        if (error.response && error.response.status === 401 && originalRequest.url !== '/Auth/login' && !originalRequest._retry) {
-            originalRequest._retry = true; // Mark as retried
-            console.warn("Unauthorized response. Token might be expired or invalid. Forcing logout.");
-            logout(); // Force logout using authService helper
-            // Redirect to login page
-            window.location.href = '/login'; // This forces a full page reload and redirect
-            return Promise.reject(error);
+    (error) => {
+        console.log('=== API ERROR DEBUG ===');
+        console.log('Error status:', error.response?.status);
+        console.log('Error data:', error.response?.data);
+        console.log('Request config:', error.config);
+        console.log('Current token:', getToken());
+        console.log('Current user:', getUser());
+        console.log('=======================');
+        if (error.response?.status === 401) {
+            // Show toast before logout
+            handleApiError(error, 'Session expired. Please login again.');
+            logout();
+            window.location.href = '/login';
         }
         return Promise.reject(error);
     }

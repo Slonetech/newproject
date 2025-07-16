@@ -13,6 +13,13 @@ export const login = async (email, password) => {
         if (response.data.token) {
             localStorage.setItem('authToken', response.data.token);
             localStorage.setItem('user', JSON.stringify(response.data.user));
+            // === LOGIN DEBUG ===
+            console.log('=== LOGIN DEBUG ===');
+            console.log('Login response:', response.data);
+            console.log('Token being stored:', response.data.token);
+            console.log('User being stored:', response.data.user);
+            console.log('User roles:', response.data.user?.roles);
+            console.log('==================');
             return response.data;
         } else {
             throw new Error('Login successful but no token received.');
@@ -68,4 +75,21 @@ export const getToken = () => localStorage.getItem('authToken');
 export const getUser = () => {
     const user = localStorage.getItem('user');
     return user ? JSON.parse(user) : null;
+};
+
+// Token validation utility
+export const isTokenValid = () => {
+    const token = getToken();
+    if (!token) return false;
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        console.log('Token payload:', payload);
+        console.log('Token expires at:', new Date(payload.exp * 1000));
+        console.log('Current time:', new Date(currentTime * 1000));
+        return payload.exp > currentTime;
+    } catch (error) {
+        console.error('Token validation error:', error);
+        return false;
+    }
 };

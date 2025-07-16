@@ -18,6 +18,11 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
         const storedToken = localStorage.getItem('authToken'); // Use 'authToken' as per your authService
+        // === AUTH CONTEXT DEBUG ===
+        console.log('=== AUTH CONTEXT DEBUG ===');
+        console.log('Loaded user:', storedUser);
+        console.log('Loaded token:', storedToken);
+        console.log('========================');
         if (storedUser && storedToken) {
             try {
                 const user = JSON.parse(storedUser);
