@@ -10,6 +10,7 @@ using SchoolApi.Data;
 using SchoolApi.Models;
 using SchoolApi.Models.DTOs.Users;
 using Microsoft.Extensions.Logging;
+using UserRoleAssignmentDto = SchoolApi.Models.DTOs.Users.RoleAssignmentDto;
 
 namespace SchoolApi.Controllers
 {
@@ -380,7 +381,7 @@ namespace SchoolApi.Controllers
         // POST: api/Users/{id}/roles
         // Assign roles to a user
         [HttpPost("{id}/roles")]
-        public async Task<IActionResult> AssignRoles(string id, RoleAssignmentDto roleAssignmentDto)
+        public async Task<IActionResult> AssignRoles(string id, UserRoleAssignmentDto roleAssignmentDto)
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
@@ -417,7 +418,7 @@ namespace SchoolApi.Controllers
         // DELETE: api/Users/{id}/roles
         // Remove roles from a user
         [HttpDelete("{id}/roles")]
-        public async Task<IActionResult> RemoveRoles(string id, RoleAssignmentDto roleAssignmentDto)
+        public async Task<IActionResult> RemoveRoles(string id, UserRoleAssignmentDto roleAssignmentDto)
         {
             var user = await _userManager.FindByIdAsync(id);
             if (user == null)
