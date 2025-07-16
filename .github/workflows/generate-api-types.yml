@@ -18,6 +18,7 @@ jobs:
           dotnet-version: 8.0.x
       - name: Restore and build backend
         run: |
+          dotnet clean ./backend/SchoolApi/SchoolApi.csproj
           dotnet restore ./backend/SchoolApi/SchoolApi.csproj
           dotnet build ./backend/SchoolApi/SchoolApi.csproj --configuration Release
       - name: Run backend in background

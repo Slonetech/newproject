@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace SchoolApi.Models.DTOs.Admin
 {
+    [SwaggerSchema("AdminRoleAssignmentDto")]
     public class RoleAssignmentDto
     {
         [Required]

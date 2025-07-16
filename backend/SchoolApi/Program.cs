@@ -84,8 +84,18 @@ builder.Services.AddSwaggerGen(options =>
         options.IncludeXmlComments(xmlPath);
     }
 
-    // Fix schema conflicts by using full type name as schema ID
-    options.CustomSchemaIds(type => type.FullName);
+    // Enhanced fix: Unique schema IDs for generics and non-generics
+    options.CustomSchemaIds(type =>
+    {
+        if (type.IsGenericType)
+        {
+            var genericTypeName = type.GetGenericTypeDefinition().Name;
+            genericTypeName = genericTypeName.Substring(0, genericTypeName.IndexOf('`'));
+            var genericArgs = string.Join("And", type.GetGenericArguments().Select(t => t.Name));
+            return $"{type.Namespace}.{genericTypeName}Of{genericArgs}";
+        }
+        return $"{type.Namespace}.{type.Name}";
+    });
 });
 
 // Configure CORS
