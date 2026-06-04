@@ -105,7 +105,7 @@ namespace SchoolApi.Controllers
                             student.FirstName,
                             student.LastName,
                             course.Name,
-                            attendance.IsPresent,
+                            attendance.Status,
                             attendance.Date
                         );
                     }
@@ -155,7 +155,7 @@ namespace SchoolApi.Controllers
                             existingAttendance.Student.FirstName,
                             existingAttendance.Student.LastName,
                             existingAttendance.Course.Name,
-                            attendance.IsPresent,
+                            attendance.Status,
                             attendance.Date
                         );
                     }

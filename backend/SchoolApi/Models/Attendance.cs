@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using SchoolApi.Models.Enums;
 
 namespace SchoolApi.Models
 {
@@ -20,7 +21,7 @@ namespace SchoolApi.Models
         public DateTime Date { get; set; } = DateTime.UtcNow;
 
         [Required]
-        public bool IsPresent { get; set; }
+        public AttendanceStatus Status { get; set; } = AttendanceStatus.Present;
 
         [StringLength(500)]
         public string? Comments { get; set; }

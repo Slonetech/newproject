@@ -170,6 +170,12 @@ builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
+// Register new service layer services
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IGradeService, GradeService>();
+builder.Services.AddScoped<IAssignmentService, AssignmentService>();
+
 // Add SignalR for real-time notifications
 builder.Services.AddSignalR();
 

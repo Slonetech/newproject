@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using SchoolApi.Models.Enums;
 
 namespace SchoolApi.Services
 {
@@ -10,7 +11,7 @@ namespace SchoolApi.Services
     {
         Task SendEmailAsync(string to, string subject, string htmlContent);
         Task SendGradeNotificationAsync(string toEmail, string studentFirstName, string studentLastName, string courseTitle, double gradeValue, DateTime date);
-        Task SendAttendanceNotificationAsync(string toEmail, string studentFirstName, string studentLastName, string courseTitle, bool isPresent, DateTime date);
+        Task SendAttendanceNotificationAsync(string toEmail, string studentFirstName, string studentLastName, string courseTitle, AttendanceStatus status, DateTime date);
         Task SendPasswordResetAsync(string to, string resetLink);
         Task SendAssignmentNotificationAsync(string toEmail, string studentFirstName, string studentLastName, string assignmentTitle, string courseName, DateTime dueDate);
     }
@@ -65,23 +66,33 @@ namespace SchoolApi.Services
             await client.SendEmailAsync(msg);
         }
 
-        public async Task SendAttendanceNotificationAsync(string toEmail, string studentFirstName, string studentLastName, string courseTitle, bool isPresent, DateTime date)
+        public async Task SendAttendanceNotificationAsync(string toEmail, string studentFirstName, string studentLastName, string courseTitle, AttendanceStatus status, DateTime date)
+    {
+        var client = new SendGridClient(_sendGridApiKey);
+        var from = new EmailAddress(_fromEmail, _fromName);
+        var to = new EmailAddress(toEmail);
+        var subject = $"Attendance Update for {studentFirstName} {studentLastName}";
+        
+        // Convert enum to readable status text
+        var statusText = status switch
         {
-            var client = new SendGridClient(_sendGridApiKey);
-            var from = new EmailAddress(_fromEmail, _fromName);
-            var to = new EmailAddress(toEmail);
-            var subject = $"Attendance Update for {studentFirstName} {studentLastName}";
-            var status = isPresent ? "Present" : "Absent";
-            var plainTextContent = $"Attendance has been recorded for {studentFirstName} {studentLastName} in {courseTitle}. Status: {status} Date: {date:d}";
-            var htmlContent = $@"
-                <h2>Attendance Update</h2>
-                <p>Attendance has been recorded for {studentFirstName} {studentLastName} in {courseTitle}.</p>
-                <p><strong>Status:</strong> {status}</p>
-                <p><strong>Date:</strong> {date:d}</p>
-            ";
-            var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
-            await client.SendEmailAsync(msg);
-        }
+            AttendanceStatus.Present => "Present",
+            AttendanceStatus.Absent => "Absent",
+            AttendanceStatus.Late => "Late",
+            AttendanceStatus.Excused => "Excused (with valid reason)",
+            _ => status.ToString()
+        };
+        
+        var plainTextContent = $"Attendance has been recorded for {studentFirstName} {studentLastName} in {courseTitle}. Status: {statusText} Date: {date:d}";
+        var htmlContent = $@"
+            <h2>Attendance Update</h2>
+            <p>Attendance has been recorded for {studentFirstName} {studentLastName} in {courseTitle}.</p>
+            <p><strong>Status:</strong> {statusText}</p>
+            <p><strong>Date:</strong> {date:d}</p>
+        ";
+        var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
+        await client.SendEmailAsync(msg);
+    }
 
         public async Task SendPasswordResetAsync(string to, string resetLink)
         {
